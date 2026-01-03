@@ -395,33 +395,33 @@ async function endCompetition() {
     // 2️⃣ Show completion screen
     stopTimer();
     completionScreen.style.display = 'flex';
-    document.getElementById('finalTime').textContent = `Final Time: ${getFinalTime()} `;
+    // document.getElementById('finalTime').textContent = `Final Time: ${getFinalTime()} `;
 
-    // 3️⃣ Calculate total score
-    const totalScore = Object.values(questionScores).reduce((sum, score) => sum + score, 0);
-    const averageScore = completedQuestions.size > 0 ? Math.floor(totalScore / completedQuestions.size) : 0;
+    // // 3️⃣ Calculate total score
+    // const totalScore = Object.values(questionScores).reduce((sum, score) => sum + score, 0);
+    // const averageScore = completedQuestions.size > 0 ? Math.floor(totalScore / completedQuestions.size) : 0;
 
-    // 4️⃣ Update completion message
-    document.getElementById('completionMessage').textContent = `You've completed ${completedQuestions.size} challenges with an Average Score of ${averageScore}%!`;
+    // // 4️⃣ Update completion message
+    // document.getElementById('completionMessage').textContent = `You've completed ${completedQuestions.size} challenges with an Average Score of ${averageScore}%!`;
 
-    // 5️⃣ Export results
-    const results = {
-        username: currentUser,
-        totalTime: getFinalTime(),
-        questionsAttempted: completedQuestions.size,
-        totalScore: totalScore,
-        detailedScores: questionScores,
-        solvedQuestions: Array.from(completedQuestions).map(idx => ({
-            id: challenges[idx].id,
-            title: challenges[idx].title,
-            score: questionScores[idx] || 0
-        }))
-    };
+    // // 5️⃣ Export results
+    // const results = {
+    //     username: currentUser,
+    //     totalTime: getFinalTime(),
+    //     questionsAttempted: completedQuestions.size,
+    //     totalScore: totalScore,
+    //     detailedScores: questionScores,
+    //     solvedQuestions: Array.from(completedQuestions).map(idx => ({
+    //         id: challenges[idx].id,
+    //         title: challenges[idx].title,
+    //         score: questionScores[idx] || 0
+    //     }))
+    // };
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `results_${currentUser}.json`);
+    // const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
+    // const downloadAnchorNode = document.createElement('a');
+    // downloadAnchorNode.setAttribute("href", dataStr);
+    // downloadAnchorNode.setAttribute("download", `results_${currentUser}.json`);
     document.body.appendChild(downloadAnchorNode); // required for firefox
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -437,45 +437,45 @@ btnEnd.addEventListener('click', () => {
     });
 });
 
-// Calculate match percentage using Levenshtein distance or simple char matching
-function calculateMatchPercentage(output, expected) {
-    if (!output || !expected) return 0;
+// // Calculate match percentage using Levenshtein distance or simple char matching
+// function calculateMatchPercentage(output, expected) {
+//     if (!output || !expected) return 0;
 
-    const outputStr = output.trim();
-    const expectedStr = expected.trim();
+//     const outputStr = output.trim();
+//     const expectedStr = expected.trim();
 
-    if (outputStr === expectedStr) return 100;
+//     if (outputStr === expectedStr) return 100;
 
-    let matches = 0;
-    const len = Math.max(outputStr.length, expectedStr.length);
+//     let matches = 0;
+//     const len = Math.max(outputStr.length, expectedStr.length);
 
-    for (let i = 0; i < Math.min(outputStr.length, expectedStr.length); i++) {
-        if (outputStr[i] === expectedStr[i]) {
-            matches++;
-        }
-    }
+//     for (let i = 0; i < Math.min(outputStr.length, expectedStr.length); i++) {
+//         if (outputStr[i] === expectedStr[i]) {
+//             matches++;
+//         }
+//     }
 
-    return Math.floor((matches / len) * 100);
-}
+//     return Math.floor((matches / len) * 100);
+// }
 
-// Check if answer is correct using the 'result.output' from iframe
-function isAnswerCorrect(output, expectedOutput) {
-    return output.trim() === expectedOutput.trim();
-}
+// // Check if answer is correct using the 'result.output' from iframe
+// function isAnswerCorrect(output, expectedOutput) {
+//     return output.trim() === expectedOutput.trim();
+// }
 
 
-// Update match percentage display
-function updateMatchDisplay(percentage, isCorrect) {
-    matchPercentage.textContent = `Match: ${percentage}%`;
+// // Update match percentage display
+// function updateMatchDisplay(percentage, isCorrect) {
+//     matchPercentage.textContent = `Match: ${percentage}%`;
 
-    if (isCorrect) {
-        matchPercentage.className = 'match-percentage match-100';
-    } else if (percentage > 0) {
-        matchPercentage.className = 'match-percentage match-partial';
-    } else {
-        matchPercentage.className = 'match-percentage match-none';
-    }
-}
+//     if (isCorrect) {
+//         matchPercentage.className = 'match-percentage match-100';
+//     } else if (percentage > 0) {
+//         matchPercentage.className = 'match-percentage match-partial';
+//     } else {
+//         matchPercentage.className = 'match-percentage match-none';
+//     }
+// }
 
 // Event listeners
 btnStart.addEventListener('click', () => {
@@ -486,8 +486,9 @@ btnStart.addEventListener('click', () => {
     }
     currentUser = username;
     currentLanguage = languageSelect.value;
+
     // Update iframe src with selected language
-    const newSrc = `https://onecompiler.com/embed/${currentLanguage}?listenToEvents=true&codeChangeEvent=true&hideResult=true&hideStdin=true&hideLanguageSelection=true&hideNew=true&hideRun=true&hideResult=true`;
+    const newSrc = `https://block-coding-onecompiler.pages.dev/`;
 
     // Wait for iframe to load before starting
     iframe.onload = () => {
