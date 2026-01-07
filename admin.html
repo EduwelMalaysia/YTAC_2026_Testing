@@ -600,7 +600,11 @@
           <span class="icon">🔗</span> Assign Teams
         </button>
         <button id="btnQuestion" class="tbtn" role="tab" aria-controls="panelQuestion" aria-selected="false">
-          <span class="icon">❓</span> Create a Question
+          <span class="icon">❓</span> Questions (Sec)
+        </button>
+        <button id="btnQuestionPrimary" class="tbtn" role="tab" aria-controls="panelQuestionPrimary"
+          aria-selected="false">
+          <span class="icon">🎒</span> Questions (Pri)
         </button>
         <button id="btnViewer" class="tbtn" role="tab" aria-controls="panelViewer" aria-selected="false">
           <span class="icon">📊</span> Score Viewer
@@ -851,22 +855,22 @@
 
         <section id="panelQuestion" class="panel card" role="tabpanel" aria-labelledby="btnQuestion">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2>Manage Questions</h2>
+            <h2>Manage Questions (Secondary)</h2>
             <div style="display: flex; gap: 10px;">
               <button id="btnModeCreate" class="tbtn active" style="background:var(--brand); color:#fff;">➕ Create
-                New</button>
-              <button id="btnModeList" class="tbtn">📋 View List</button>
+                New (Sec)</button>
+              <button id="btnModeList" class="tbtn">📋 View List (Sec)</button>
             </div>
           </div>
 
           <div id="createQuestionContainer">
-            <h4>Fill in the details below to create or update a question.</h4>
+            <h4>Fill in the details below to create or update a SECONDARY question.</h4>
             <div class="sectionbar" id="newQuestionBar" style="gap:.5rem; align-items:center;">
 
 
               <div class="user-input">
 
-                <label for="Question Code">💻 Question Code</label>
+                <label for="Question Code">💻 Question Code (Secondary)</label>
                 <input id="nq_question_code" type="text" name="Question Code" placeholder="Question code (e.g. Q002)"
                   style="max-width:14rem;">
 
@@ -939,7 +943,7 @@
                 <textarea id="nq_question_out10" type="text" placeholder="Output..."
                   style="width:25rem; height:15rem"></textarea>
                 <button class="tbtn" id="btnQuestionRefresh">⟳ Refresh</button>
-                <button class="tbtn" id="nq_submit">➕ Submit</button>
+                <button class="tbtn" id="nq_submit">➕ Submit (Secondary)</button>
                 <p id="questionStatus" style="margin-top:10px; font-weight:600; color:#555;"></p>
                 <!-- Status message appears here -->
               </div>
@@ -954,7 +958,7 @@
           <!-- Question List View -->
           <section id="questionListPanel" style="display: none; margin-top:1rem;">
             <div class="sectionbar">
-              <span class="muted">Existing Questions</span>
+              <span class="muted">Existing Questions (Secondary)</span>
               <button id="btnRefreshQuestions" class="tbtn">⟳ Refresh</button>
             </div>
             <div id="questionListStatus" style="font-size:0.9rem;color:#666; margin-bottom: 8px;"></div>
@@ -963,6 +967,122 @@
           </section>
 
       </div>
+
+
+      <!-- ================= PRIMARY QUESTION FORM (DUPLICATED) ================= -->
+      <section id="panelQuestionPrimary" class="panel card" role="tabpanel" aria-labelledby="btnQuestionPrimary">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2>Manage Questions (Primary)</h2>
+          <div style="display: flex; gap: 10px;">
+            <button id="btnModeCreatePrimary" class="tbtn active" style="background:var(--brand); color:#fff;">➕ Create
+              New (Pri)</button>
+            <button id="btnModeListPrimary" class="tbtn">📋 View List (Pri)</button>
+          </div>
+        </div>
+
+        <div id="createQuestionContainerPrimary">
+          <h4>Fill in the details below to create or update a PRIMARY question.</h4>
+          <div class="sectionbar" id="newQuestionBarPrimary" style="gap:.5rem; align-items:center;">
+
+            <div class="user-input">
+
+              <label for="Question Code">💻 Question Code (Primary)</label>
+              <input id="pq_question_code" type="text" name="Question Code" placeholder="Question code (e.g. PQ001)"
+                style="max-width:14rem;">
+
+              <div class="assign-col">
+                <label class="muted" name="Marks" for="pq_MarkSelect">💯 Difficulty Level</label>
+                <select id="pq_MarkSelect" style="max-width: 14rem;">
+                  <option value="">— Select Difficulty —</option>
+                  <option value="Easy"> Super Easy 2% </option>
+                  <option value="Normal"> Easy 5% </option>
+                  <option value="Hard"> Normal 7% </option>
+                  <option value="Extreme"> Hard 10% </option>
+                </select>
+              </div>
+
+              <label for="Title">✏️ Title:</label>
+              <input type="text" id="pq_question_title" name="Title" placeholder="Enter your title here..."
+                style="width:50rem" />
+              <label for="Problem Statement"> 🧩 Problem Statement:</label>
+              <textarea type="text" id="pq_question_statement" name="Problem Statement"
+                placeholder="Enter your Statement here..." style="width:50rem; height: 14rem;"></textarea>
+              <h3>📝 Test Cases</h3>
+              <label for="Test Case1">Test Case 1:</label>
+              <textarea id="pq_question_input1" type="text" placeholder="Input..."
+                style="width:25rem; height:15rem"></textarea>
+              <textarea id="pq_question_out1" type="text" placeholder="Output..."
+                style="width:25rem; height:15rem"></textarea>
+              <label for="Test Case2">Test Case 2:</label>
+              <textarea id="pq_question_input2" type="text" placeholder="Input..."
+                style="width:25rem; height:15rem"></textarea>
+              <textarea id="pq_question_out2" type="text" placeholder="Output..."
+                style="width:25rem; height:15rem"></textarea>
+              <label for="Test Case3">Test Case 3:</label>
+              <textarea id="pq_question_input3" type="text" placeholder="Input..."
+                style="width:25rem; height:15rem"></textarea>
+              <textarea id="pq_question_out3" type="text" placeholder="Output..."
+                style="width:25rem; height:15rem"></textarea>
+              <label for="Test Case4">Test Case 4:</label>
+              <textarea id="pq_question_input4" type="text" placeholder="Input..."
+                style="width:25rem; height:15rem"></textarea>
+              <textarea id="pq_question_out4" type="text" placeholder="Output..."
+                style="width:25rem; height:15rem"></textarea>
+              <label for="Test Case5">Test Case 5:</label>
+              <textarea id="pq_question_input5" type="text" placeholder="Input..."
+                style="width:25rem; height:15rem"></textarea>
+              <textarea id="pq_question_out5" type="text" placeholder="Output..."
+                style="width:25rem; height:15rem"></textarea>
+              <label for="Test Case6">Test Case 6:</label>
+              <textarea id="pq_question_input6" type="text" placeholder="Input..."
+                style="width:25rem; height:15rem"></textarea>
+              <textarea id="pq_question_out6" type="text" placeholder="Output..."
+                style="width:25rem; height:15rem"></textarea>
+              <label for="Test Case7">Test Case 7:</label>
+              <textarea id="pq_question_input7" type="text" placeholder="Input..."
+                style="width:25rem; height:15rem"></textarea>
+              <textarea id="pq_question_out7" type="text" placeholder="Output..."
+                style="width:25rem; height:15rem"></textarea>
+              <label for="Test Case8">Test Case 8:</label>
+              <textarea id="pq_question_input8" type="text" placeholder="Input..."
+                style="width:25rem; height:15rem"></textarea>
+              <textarea id="pq_question_out8" type="text" placeholder="Output..."
+                style="width:25rem; height:15rem"></textarea>
+              <label for="Test Case9">Test Case 9:</label>
+              <textarea id="pq_question_input9" type="text" placeholder="Input..."
+                style="width:25rem; height:15rem"></textarea>
+              <textarea id="pq_question_out9" type="text" placeholder="Output..."
+                style="width:25rem; height:15rem"></textarea>
+              <label for="Test Case10">Test Case 10:</label>
+              <textarea id="pq_question_input10" type="text" placeholder="Input..."
+                style="width:25rem; height:15rem"></textarea>
+              <textarea id="pq_question_out10" type="text" placeholder="Output..."
+                style="width:25rem; height:15rem"></textarea>
+              <button class="tbtn" id="btnQuestionPrimaryRefresh">⟳ Refresh</button>
+              <button class="tbtn" id="pq_submit">➕ Submit (Primary)</button>
+              <p id="questionPrimaryStatus" style="margin-top:10px; font-weight:600; color:#555;"></p>
+              <!-- Status message appears here -->
+            </div>
+
+
+
+            <div class="spacer"></div>
+            <span id="newQuestionStatusPrimary" class="muted" style="min-width:12rem;"></span>
+          </div>
+        </div> <!-- End createQuestionContainerPrimary -->
+
+        <!-- Question List View PRIMARY -->
+        <section id="questionListPanelPrimary" style="display: none; margin-top:1rem;">
+          <div class="sectionbar">
+            <span class="muted">Existing Questions (Primary)</span>
+            <button id="btnRefreshQuestionsPrimary" class="tbtn">⟳ Refresh</button>
+          </div>
+          <div id="questionListStatusPrimary" style="font-size:0.9rem;color:#666; margin-bottom: 8px;"></div>
+          <div id="questionListContainerPrimary"
+            style="overflow:auto; max-height:600px; border:1px solid #ddd; border-radius:8px;"></div>
+        </section>
+
+      </section>
     </main>
   </div>
 
@@ -987,6 +1107,7 @@
       { btn: 'btnJudges', panel: 'panelJudges' },
       { btn: 'btnAssign', panel: 'panelAssign' },
       { btn: 'btnQuestion', panel: 'panelQuestion' },
+      { btn: 'btnQuestionPrimary', panel: 'panelQuestionPrimary' },
       { btn: 'btnViewer', panel: 'panelViewer' },
       { btn: 'btnResults', panel: 'panelResults' },
       { btn: 'btnVoting', panel: 'panelVoting' }
@@ -2577,7 +2698,6 @@
     });
 
     async function submitQuestion() {
-
       const btn = document.getElementById("nq_submit");
       const statusEl = document.getElementById("questionStatus");
 
@@ -2589,6 +2709,7 @@
         difficulty: document.getElementById("MarkSelect").value,
         title: document.getElementById("nq_question_title").value,
         statement: document.getElementById("nq_question_statement").value,
+        category: "secondary",
         testCases: Array.from({ length: 10 }, (_, i) => ({
           input: {
             raw: document.getElementById(`nq_question_input${i + 1}`).value,
@@ -2603,7 +2724,7 @@
 
       try {
         const response = await fetch(
-          "https://judging-system.yeewengloke.workers.dev/questions",
+          `${API}/questions`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -2612,19 +2733,58 @@
         );
 
         const text = await response.text();
-        console.log("RAW RESPONSE:", text);
+        if (!response.ok) throw new Error(text);
 
-        if (!response.ok) {
-          throw new Error(text);
-        }
-
-        const data = JSON.parse(text);
         statusEl.textContent = "Question saved successfully!";
+        clearQuestionForm();
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "Error: " + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
 
-        // After statusEl.textContent = "Question saved successfully!";
-        clearQuestionForm()
+    async function submitQuestionPrimary() {
+      const btn = document.getElementById("pq_submit");
+      const statusEl = document.getElementById("questionPrimaryStatus");
 
+      btn.disabled = true;
+      statusEl.textContent = "Saving question…";
 
+      const payload = {
+        code: document.getElementById("pq_question_code").value,
+        difficulty: document.getElementById("pq_MarkSelect").value,
+        title: document.getElementById("pq_question_title").value,
+        statement: document.getElementById("pq_question_statement").value,
+        category: "primary",
+        testCases: Array.from({ length: 10 }, (_, i) => ({
+          input: {
+            raw: document.getElementById(`pq_question_input${i + 1}`).value,
+            type: "input"
+          },
+          output: {
+            raw: document.getElementById(`pq_question_out${i + 1}`).value,
+            type: "output"
+          }
+        }))
+      };
+
+      try {
+        const response = await fetch(
+          `${API}/questions`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        const text = await response.text();
+        if (!response.ok) throw new Error(text);
+
+        statusEl.textContent = "Question saved successfully!";
+        clearQuestionFormPrimary();
       } catch (err) {
         console.error(err);
         statusEl.textContent = "Error: " + err.message;
@@ -2642,8 +2802,19 @@
         document.getElementById(`nq_question_input${i}`).value = '';
         document.getElementById(`nq_question_out${i}`).value = '';
       }
-      // Reset button text
-      document.getElementById("nq_submit").innerHTML = "➕ Submit";
+      document.getElementById("nq_submit").innerHTML = "➕ Submit (Secondary)";
+    }
+
+    function clearQuestionFormPrimary() {
+      document.getElementById("pq_question_code").value = '';
+      document.getElementById("pq_MarkSelect").value = '';
+      document.getElementById("pq_question_title").value = '';
+      document.getElementById("pq_question_statement").value = '';
+      for (let i = 1; i <= 10; i++) {
+        document.getElementById(`pq_question_input${i}`).value = '';
+        document.getElementById(`pq_question_out${i}`).value = '';
+      }
+      document.getElementById("pq_submit").innerHTML = "➕ Submit (Primary)";
     }
 
     // --- Question Management Logic ---
@@ -2671,7 +2842,6 @@
         btnModeCreate.classList.add('active');
         btnModeCreate.style.background = 'var(--brand)';
         btnModeCreate.style.color = '#fff';
-
         btnModeList.classList.remove('active');
         btnModeList.style.background = '';
         btnModeList.style.color = '';
@@ -2681,12 +2851,64 @@
         btnModeList.classList.add('active');
         btnModeList.style.background = 'var(--brand)';
         btnModeList.style.color = '#fff';
-
         btnModeCreate.classList.remove('active');
         btnModeCreate.style.background = '';
         btnModeCreate.style.color = '';
       }
     }
+
+    // --- Primary Question Management Logic ---
+    const btnModeCreatePrimary = document.getElementById('btnModeCreatePrimary');
+    const btnModeListPrimary = document.getElementById('btnModeListPrimary');
+    const createContainerPrimary = document.getElementById('createQuestionContainerPrimary');
+    const listContainerPrimary = document.getElementById('questionListPanelPrimary');
+    const btnRefreshQuestionsPrimary = document.getElementById('btnRefreshQuestionsPrimary');
+
+    btnModeCreatePrimary?.addEventListener('click', () => {
+      switchQuestionModePrimary('create');
+    });
+
+    btnModeListPrimary?.addEventListener('click', () => {
+      switchQuestionModePrimary('list');
+      loadQuestionsPrimary();
+    });
+
+    btnRefreshQuestionsPrimary?.addEventListener('click', loadQuestionsPrimary);
+
+    document.getElementById('pq_submit')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!confirm("Are you sure you want to submit this PRIMARY question?")) return;
+      submitQuestionPrimary();
+    });
+
+    document.getElementById('btnQuestionPrimaryRefresh')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      clearQuestionFormPrimary();
+    });
+
+
+    function switchQuestionModePrimary(mode) {
+      if (mode === 'create') {
+        createContainerPrimary.style.display = 'block';
+        listContainerPrimary.style.display = 'none';
+        btnModeCreatePrimary.classList.add('active');
+        btnModeCreatePrimary.style.background = 'var(--brand)';
+        btnModeCreatePrimary.style.color = '#fff';
+        btnModeListPrimary.classList.remove('active');
+        btnModeListPrimary.style.background = '';
+        btnModeListPrimary.style.color = '';
+      } else {
+        createContainerPrimary.style.display = 'none';
+        listContainerPrimary.style.display = 'block';
+        btnModeListPrimary.classList.add('active');
+        btnModeListPrimary.style.background = 'var(--brand)';
+        btnModeListPrimary.style.color = '#fff';
+        btnModeCreatePrimary.classList.remove('active');
+        btnModeCreatePrimary.style.background = '';
+        btnModeCreatePrimary.style.color = '';
+      }
+    }
+
 
     async function loadQuestions() {
       const qStatus = document.getElementById('questionListStatus');
@@ -2701,9 +2923,12 @@
 
         if (!data.success) throw new Error(data.error || "Failed to fetch");
 
-        const questions = data.questions || [];
-        renderQuestionList(questions);
-        qStatus.textContent = `Showing ${questions.length} question(s).`;
+        const allQuestions = data.questions || [];
+        // Filter for Secondary
+        const questions = allQuestions.filter(q => !q.category || q.category === 'secondary');
+
+        renderQuestionList(questions, false); // false = not primary
+        qStatus.textContent = `Showing ${questions.length} secondary question(s).`;
 
       } catch (err) {
         console.error(err);
@@ -2711,8 +2936,35 @@
       }
     }
 
-    function renderQuestionList(questions) {
-      const container = document.getElementById('questionListContainer');
+    async function loadQuestionsPrimary() {
+      const qStatus = document.getElementById('questionListStatusPrimary');
+      const qContainer = document.getElementById('questionListContainerPrimary');
+
+      qStatus.textContent = "Loading primary questions...";
+      qContainer.innerHTML = "";
+
+      try {
+        const res = await fetch(`${API}/questions`);
+        const data = await res.json();
+
+        if (!data.success) throw new Error(data.error || "Failed to fetch");
+
+        const allQuestions = data.questions || [];
+        // Filter for Primary
+        const questions = allQuestions.filter(q => q.category === 'primary');
+
+        renderQuestionList(questions, true); // true = primary
+        qStatus.textContent = `Showing ${questions.length} primary question(s).`;
+
+      } catch (err) {
+        console.error(err);
+        qStatus.textContent = "Error loading questions: " + err.message;
+      }
+    }
+
+    function renderQuestionList(questions, isPrimary) {
+      const containerId = isPrimary ? 'questionListContainerPrimary' : 'questionListContainer';
+      const container = document.getElementById(containerId);
 
       if (questions.length === 0) {
         container.innerHTML = `<div style="padding:1rem;">No questions found.</div>`;
@@ -2720,7 +2972,7 @@
       }
 
       const table = document.createElement('table');
-      table.className = "teams-table"; // reuse existing style
+      table.className = "teams-table";
       table.style.width = "100%";
       table.innerHTML = `
         <thead>
@@ -2738,7 +2990,7 @@
               <td style="padding:10px;">${q.question_title}</td>
               <td style="padding:10px;">${q.difficulty}</td>
               <td style="padding:10px; text-align:right;">
-                <button class="tbtn" onclick='editQuestion(${JSON.stringify(q).replace(/'/g, "&#39;")})'>✏️ Edit</button>
+                <button class="tbtn" onclick='editQuestion(${JSON.stringify(q).replace(/'/g, "&#39;")}, ${isPrimary})'>✏️ Edit</button>
               </td>
             </tr>
           `).join('')}
@@ -2747,54 +2999,59 @@
       container.appendChild(table);
     }
 
-    // Expose to global scope for onclick or add event listener differently
-    window.editQuestion = function (q) {
-      // 1. Switch to create mode
-      switchQuestionMode('create');
+    // Expose to global scope
+    window.editQuestion = function (q, isPrimary) {
+      if (isPrimary) {
+        switchQuestionModePrimary('create');
+        // scroll to top of panel?
+        document.getElementById('createQuestionContainerPrimary').scrollIntoView({ behavior: 'smooth' });
 
-      // 2. Populate fields
-      document.getElementById("nq_question_code").value = q.question_code || "";
-      document.getElementById("MarkSelect").value = q.difficulty || "";
-      document.getElementById("nq_question_title").value = q.question_title || "";
-      document.getElementById("nq_question_statement").value = q.problem_statement || "";
+        document.getElementById("pq_question_code").value = q.question_code || "";
+        document.getElementById("pq_MarkSelect").value = q.difficulty || "";
+        document.getElementById("pq_question_title").value = q.question_title || "";
+        document.getElementById("pq_question_statement").value = q.problem_statement || "";
 
-      // 3. Populate Test Cases
-      // The API returns fields like test_case_input_1, test_case_output_1, etc.
-      // We loop 1 to 10
-      for (let i = 1; i <= 10; i++) {
-        const inpVal = q[`test_case_input_${i}`];
-        const outVal = q[`test_case_output_${i}`];
+        for (let i = 1; i <= 10; i++) {
+          const inpVal = q[`test_case_input_${i}`];
+          const outVal = q[`test_case_output_${i}`];
+          document.getElementById(`pq_question_input${i}`).value = parseStoredIO(inpVal);
+          document.getElementById(`pq_question_out${i}`).value = parseStoredIO(outVal);
+        }
 
-        // The values might be JSON strings or raw strings depending on how they were stored/returned
-        // The worker code 'toJsonString' stores them as JSON strings.
-        // We should try to parse them if they look like JSON, to display 'raw' content to user if applicable.
-        // However, the input textarea expects what the user typed.
-        // If stored as "{\"raw\":\"abc\",\"type\":\"input\"}", we want "abc".
+        const btn = document.getElementById("pq_submit");
+        btn.innerHTML = "💾 Update Question";
 
-        document.getElementById(`nq_question_input${i}`).value = parseStoredIO(inpVal);
-        document.getElementById(`nq_question_out${i}`).value = parseStoredIO(outVal);
+      } else {
+        switchQuestionMode('create');
+        document.getElementById('createQuestionContainer').scrollIntoView({ behavior: 'smooth' });
+
+        document.getElementById("nq_question_code").value = q.question_code || "";
+        document.getElementById("MarkSelect").value = q.difficulty || "";
+        document.getElementById("nq_question_title").value = q.question_title || "";
+        document.getElementById("nq_question_statement").value = q.problem_statement || "";
+
+        for (let i = 1; i <= 10; i++) {
+          const inpVal = q[`test_case_input_${i}`];
+          const outVal = q[`test_case_output_${i}`];
+          document.getElementById(`nq_question_input${i}`).value = parseStoredIO(inpVal);
+          document.getElementById(`nq_question_out${i}`).value = parseStoredIO(outVal);
+        }
+
+        const btn = document.getElementById("nq_submit");
+        btn.innerHTML = "💾 Update Question";
       }
-
-      // 4. Update Submit Button
-      const btn = document.getElementById("nq_submit");
-      btn.innerHTML = "💾 Update Question";
-
-      // Scroll to top
-      document.getElementById('createQuestionContainer').scrollIntoView({ behavior: 'smooth' });
     };
 
     function parseStoredIO(val) {
       if (!val) return "";
       try {
-        // Try parsing outer JSON
         const p = JSON.parse(val);
-        // If it follows the structure { raw: "...", type: "..." }
         if (p && typeof p === 'object' && p.raw !== undefined) {
           return p.raw;
         }
-        return val; // fallback
+        return val;
       } catch (e) {
-        return val; // fallback for plain strings
+        return val;
       }
     }
 

@@ -90,6 +90,7 @@
             level: diffMap[q.difficulty] || "super_easy",
             title: q.question_title,
             description: q.problem_statement,
+            category: q.category, // Pass category through
             starterCode: defaultStarter,
             testCases: testCases
         };
@@ -114,15 +115,21 @@
                 window.location.href = "student_dashboard.html";
                 return;
             }
+
+            // Initialize questions with student category
+            initQuestionList(data.category);
+
         } catch (err) {
             console.error("Session verification failed", err);
+            // Fallback to all or secondary if fail? Let's just init without filter (shows all) or empty
+            initQuestionList(null);
         }
-        initQuestionList();
     }
 
 
     // State management
     let currentQuestion = 0;
+    // ... (rest of state vars unchanged)
     let startTime = null;
     let timerInterval = null;
     let completedQuestions = new Set();
@@ -136,7 +143,9 @@
     let passCount = 0;
     let currentLanguage = "python";
     let currentUser = "";
-    const COMPETITION_DURATION = 2 * 60 * 60; // 2 hours in seconds
+    const COMPETITION_START = new Date("2026-01-08T10:00:00+08:00").getTime();
+    const COMPETITION_END = new Date("2026-01-08T12:00:00+08:00").getTime();
+    // const COMPETITION_DURATION = 2 * 60 * 60; // Removed
 
     const languageFiles = {
         "python": "main.py",
@@ -176,7 +185,6 @@
     const btnModalConfirm = document.getElementById('btnModalConfirm');
 
     // Custom Modal Function
-    // Custom Modal Function
     function showModal(title, message, onConfirm, isConfirmation = true) {
         modalTitle.textContent = title;
         modalMessage.textContent = message;
@@ -203,9 +211,9 @@
     }
 
     // Initialize question list
-    // Initialize question list
-    function initQuestionList() {
+    function initQuestionList(userCategory) {
         questionList.innerHTML = '';
+        console.log("Initializing questions for category:", userCategory);
 
         const levels = ['super_easy', 'easy', 'normal', 'hard'];
         const levelTitles = {
@@ -223,7 +231,18 @@
             'hard': []
         };
 
+        const isPrimary = typeof userCategory === 'string' && userCategory.toLowerCase().includes('primary');
+
         challenges.forEach((challenge, index) => {
+            // Filter logic
+            if (isPrimary) {
+                if (challenge.category !== 'primary') return;
+            } else {
+                // Secondary students see everything EXCEPT primary? 
+                // Or explicitly 'secondary' and null.
+                if (challenge.category === 'primary') return;
+            }
+
             if (groupedChallenges[challenge.level]) {
                 groupedChallenges[challenge.level].push({ ...challenge, originalIndex: index });
             }
@@ -350,10 +369,18 @@
     // Start timer
     function startTimer() {
         startTime = new Date();
+
         timerInterval = setInterval(() => {
-            const now = new Date();
-            const elapsed = Math.floor((now - startTime) / 1000);
-            const remaining = COMPETITION_DURATION - elapsed;
+            const now = Date.now();
+
+            // Check if competition has started
+            if (now < COMPETITION_START) {
+                // Should not happen if start button restricted, but safety:
+                timerDisplay.textContent = "Competition starts at 10:00 AM";
+                return;
+            }
+
+            const remaining = Math.floor((COMPETITION_END - now) / 1000);
 
             if (remaining <= 0) {
                 endCompetition();
@@ -419,7 +446,7 @@
         const averageScore = completedQuestions.size > 0 ? Math.floor(totalScore / completedQuestions.size) : 0;
 
         // 4️⃣ Update completion message
-        document.getElementById('completionMessage').textContent = `You've completed ${completedQuestions.size} challenges with an Average Score of ${averageScore}%!`;
+        document.getElementById('completionMessage').textContent = `You've completed ${completedQuestions.size} challenges!`;
 
         // 5️⃣ Export & Save results
         const results = {
@@ -452,14 +479,6 @@
         } catch (err) {
             console.error("Failed to save results to backend:", err);
         }
-
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", `results_${currentUser}.json`);
-        document.body.appendChild(downloadAnchorNode); // required for firefox
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
     }
 
     btnEnd.addEventListener('click', () => {
@@ -514,6 +533,15 @@
 
     // Event listeners
     btnStart.addEventListener('click', () => {
+        if (Date.now() < COMPETITION_START) {
+            showModal("Competition Not Started", "The competition starts at 10:00 AM.", null, false);
+            return;
+        }
+        if (Date.now() > COMPETITION_END) {
+            showModal("Competition Ended", "The competition has ended.", null, false);
+            return;
+        }
+
         const username = usernameInput.value.trim();
         if (!username) {
             showModal("Missing Name", "Please enter your name to start.", null, false);
@@ -648,32 +676,7 @@
         }
     });
 
-    btnRestart.addEventListener('click', () => {
-        // Restart logic might need to be removed or restricted if it's a strict competition.
-        // User didn't explicitly say remove restart, but "once submit... can't click anymore" implies persistence.
-        // But "Restart Challenge" on completion screen might be for a new user?
-        // Let's keep it but it resets everything including user.
-        // Restart logic might need to be removed or restricted if it's a strict competition.
-        // User didn't explicitly say remove restart, but "once submit... can't click anymore" implies persistence.
-        // But "Restart Challenge" on completion screen might be for a new user?
-        // Let's keep it but it resets everything including user.
-        showModal("Restart Challenge", "Restarting will clear all progress. Are you sure?", () => {
-            completionScreen.style.display = 'none';
-            startScreen.style.display = 'flex';
-            currentQuestion = 0;
-            completedQuestions.clear();
-            questionScores = {};
-            currentOutput = "";
-            hasRunCode = false;
-            currentMatchPercentage = 0;
-            isCorrect = false;
-            currentTestCase = null;
-            timerDisplay.textContent = "Time: 00:00:00";
-            usernameInput.value = "";
-            currentUser = "";
-            initQuestionList();
-        });
-    });
+
 
     // Listen for messages from iframe
     window.addEventListener('message', function (e) {

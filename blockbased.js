@@ -402,7 +402,7 @@ async function endCompetition() {
     const averageScore = completedQuestions.size > 0 ? Math.floor(totalScore / completedQuestions.size) : 0;
 
     // 4️⃣ Update completion message
-    document.getElementById('completionMessage').textContent = `You've completed ${completedQuestions.size} challenges with an Average Score of ${averageScore}%!`;
+    document.getElementById('completionMessage').textContent = `You've completed ${completedQuestions.size} challenges!`;
 
     // 5️⃣ Export & Save results
     const results = {
@@ -435,14 +435,6 @@ async function endCompetition() {
     } catch (err) {
         console.error("Failed to save results to backend:", err);
     }
-
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `results_${currentUser}.json`);
-    document.body.appendChild(downloadAnchorNode); // required for firefox
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
 }
 
 btnEnd.addEventListener('click', () => {
