@@ -35,7 +35,11 @@
             "Easy": "super_easy",
             "Normal": "easy",
             "Hard": "normal",
-            "Extreme": "hard"
+            "Extreme": "hard",
+            "super_easy": "super_easy",
+            "easy": "easy",
+            "normal": "normal",
+            "hard": "hard"
         };
 
         const testCases = [];
@@ -56,13 +60,17 @@
                     }
 
                     let finalStdin = "";
-                    let testCaseDesc = `Test Case ${i}`;
+                    let testCaseDesc = q[`test_case_desc_${i}`] || "";
                     if (typeof cleanInput === 'object' && cleanInput !== null) {
                         finalStdin = cleanInput.raw || JSON.stringify(cleanInput);
-                        if (cleanInput.desc) testCaseDesc = cleanInput.desc;
+                        // If no dedicated column found, fallback to the description inside the input JSON
+                        if (!testCaseDesc && cleanInput.desc) testCaseDesc = cleanInput.desc;
                     } else {
                         finalStdin = String(cleanInput);
                     }
+
+                    // Final fallback if still empty
+                    if (!testCaseDesc) testCaseDesc = `Test Case ${i}`;
 
                     let finalStdout = "";
                     if (typeof cleanOutput === 'object' && cleanOutput !== null) {
@@ -122,9 +130,9 @@
             initQuestionList(data.category);
 
             // Hide Blockly for non-primary students
-            const isPrimary = typeof data.category === 'string' && data.category.toLowerCase().includes('primary');
+            isPrimaryUser = typeof data.category === 'string' && data.category.toLowerCase().includes('primary');
             const blocklyOption = languageSelect.querySelector('option[value="blockly"]');
-            if (!isPrimary && blocklyOption) {
+            if (!isPrimaryUser && blocklyOption) {
                 blocklyOption.remove();
             }
 
@@ -148,6 +156,7 @@
     let currentMatchPercentage = 0;
     let isCorrect = false;
     let currentCode = "";
+    let isPrimaryUser = false;
     let currentTestCase = null;
     let passCount = 0;
     let currentLanguage = "python";
@@ -190,7 +199,6 @@
     const modalMessage = document.getElementById('modalMessage');
     const btnModalCancel = document.getElementById('btnModalCancel');
     const btnModalConfirm = document.getElementById('btnModalConfirm');
-    const fileUpload = document.getElementById('fileUpload');
     const finalSteps = document.getElementById('finalSteps');
 
     // Custom Modal Function
@@ -240,16 +248,17 @@
             'hard': []
         };
 
-        const isPrimary = typeof userCategory === 'string' && userCategory.toLowerCase().includes('primary');
+        isPrimaryUser = typeof userCategory === 'string' && userCategory.toLowerCase().includes('primary');
 
         challenges.forEach((challenge, index) => {
+            const cat = (challenge.category || "").toLowerCase();
             // Filter logic
-            if (isPrimary) {
-                if (challenge.category !== 'primary') return;
+            if (isPrimaryUser) {
+                // Primary sees 'primary' and 'general'
+                if (cat !== 'primary' && cat !== 'general') return;
             } else {
-                // Secondary students see everything EXCEPT primary? 
-                // Or explicitly 'secondary' and null.
-                if (challenge.category === 'primary') return;
+                // Secondary sees everything EXCEPT 'primary'
+                if (cat === 'primary') return;
             }
 
             if (groupedChallenges[challenge.level]) {
@@ -433,16 +442,6 @@
         URL.revokeObjectURL(url);
     }
 
-    // Read file as Base64
-    function readFileAsBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = error => reject(error);
-            reader.readAsDataURL(file);
-        });
-    }
-
     // End Competition
     async function endCompetition() {
         // 1️⃣ End session in backend
@@ -473,9 +472,31 @@
         if (finalSteps) finalSteps.style.display = 'block';
         document.getElementById('finalTime').textContent = `Final Time: ${getFinalTime()} `;
 
-        // 3️⃣ Calculate total score
-        const totalScore = Object.values(questionScores).reduce((sum, score) => sum + score, 0);
-        const averageScore = completedQuestions.size > 0 ? Math.floor(totalScore / completedQuestions.size) : 0;
+        // 3️⃣ Calculate total score (weighted for secondary, simple for primary)
+        let totalScore = 0;
+        if (isPrimaryUser) {
+            // Simple sum of match percentages / questions
+            const sumMatch = Object.values(questionScores).reduce((sum, score) => sum + score, 0);
+            totalScore = completedQuestions.size > 0 ? Math.floor(sumMatch / completedQuestions.size) : 0;
+        } else {
+            // Weighted logic for Textbased peeps
+            const difficultyWeights = {
+                "super_easy": 2,
+                "easy": 5,
+                "normal": 7,
+                "hard": 10,
+                "extreme": 10
+            };
+
+            let weightedTotal = 0;
+            completedQuestions.forEach(idx => {
+                const diff = (challenges[idx].difficulty || "easy").toLowerCase();
+                const weight = difficultyWeights[diff] || 2;
+                const matchPercent = questionScores[idx] || 0;
+                weightedTotal += (matchPercent / 100) * weight;
+            });
+            totalScore = parseFloat(weightedTotal.toFixed(2));
+        }
 
         // 4️⃣ Update completion message
         document.getElementById('completionMessage').textContent = `You've completed ${completedQuestions.size} challenges!`;
@@ -491,7 +512,9 @@
             solvedQuestions: Array.from(completedQuestions).map(idx => ({
                 id: challenges[idx].id,
                 title: challenges[idx].title,
-                score: questionScores[idx] || 0
+                difficulty: challenges[idx].difficulty,
+                matchPercentage: questionScores[idx] || 0,
+                weightedScore: parseFloat(((questionScores[idx] || 0) / 100 * (difficultyWeights[(challenges[idx].difficulty || "easy").toLowerCase()] || 2)).toFixed(2))
             }))
         };
 
@@ -682,22 +705,12 @@
                 const score = Math.floor((passCount / currentChallenge.testCases.length) * 100);
 
                 // 1. Prepare submission data
-                let fileData = null;
-                let fileName = null;
-                if (fileUpload && fileUpload.files.length > 0) {
-                    const file = fileUpload.files[0];
-                    fileName = file.name;
-                    fileData = await readFileAsBase64(file);
-                }
-
                 const submission = {
                     team_code: localStorage.getItem("team_code"),
                     question_code: currentChallenge.id,
                     score: score,
                     code: currentCode,
                     language: currentLanguage,
-                    attached_file_name: fileName,
-                    attached_file_data: fileData, // Base64
                     pass_count: passCount,
                     total_test_cases: currentChallenge.testCases.length
                 };
@@ -724,7 +737,6 @@
                 questionScores[currentQuestion] = score;
                 completedQuestions.add(currentQuestion);
                 updateQuestionList(); // This will lock it
-                if (fileUpload) fileUpload.value = ""; // Clear file input
 
                 // Move to next available question
                 let nextQ = currentQuestion + 1;

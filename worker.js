@@ -42,54 +42,89 @@ var worker_default = {
 		});
 
 
-		// --- QUESTIONS: CREATE OR UPDATE (DOUBLICATE ALLOWED) ---
+		// --- QUESTIONS: CREATE OR UPDATE ---
 		if (url.pathname === "/questions" && method === "POST") {
 			try {
 				const data = await request.json();
-				const { code, difficulty, title, statement, testCases } = data;
+				const { id, code, difficulty, title, statement, testCases } = data;
 				let { category } = data;
 				if (!category) category = "secondary"; // Default
 
-				// Unconditionally INSERT (Allows duplicate question_code)
-				const insertQuery = `
-          INSERT INTO questions
-          (
-            question_code, difficulty, question_title, problem_statement, category,
-            test_case_input_1,  test_case_output_1,
-            test_case_input_2,  test_case_output_2,
-            test_case_input_3,  test_case_output_3,
-            test_case_input_4,  test_case_output_4,
-            test_case_input_5,  test_case_output_5,
-            test_case_input_6,  test_case_output_6,
-            test_case_input_7,  test_case_output_7,
-            test_case_input_8,  test_case_output_8,
-            test_case_input_9,  test_case_output_9,
-            test_case_input_10, test_case_output_10
-          )
-          VALUES (
-            ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-          )
-        `;
+				if (id) {
+					// UPDATE existing question
+					const updateQuery = `
+						UPDATE questions SET
+						question_code = ?, difficulty = ?, question_title = ?, problem_statement = ?, category = ?,
+						test_case_input_1 = ?,  test_case_output_1 = ?,  test_case_desc_1 = ?,
+						test_case_input_2 = ?,  test_case_output_2 = ?,  test_case_desc_2 = ?,
+						test_case_input_3 = ?,  test_case_output_3 = ?,  test_case_desc_3 = ?,
+						test_case_input_4 = ?,  test_case_output_4 = ?,  test_case_desc_4 = ?,
+						test_case_input_5 = ?,  test_case_output_5 = ?,  test_case_desc_5 = ?,
+						test_case_input_6 = ?,  test_case_output_6 = ?,  test_case_desc_6 = ?,
+						test_case_input_7 = ?,  test_case_output_7 = ?,  test_case_desc_7 = ?,
+						test_case_input_8 = ?,  test_case_output_8 = ?,  test_case_desc_8 = ?,
+						test_case_input_9 = ?,  test_case_output_9 = ?,  test_case_desc_9 = ?,
+						test_case_input_10 = ?, test_case_output_10 = ?, test_case_desc_10 = ?
+						WHERE id = ?
+					`;
+					await env2.DB.prepare(updateQuery)
+						.bind(
+							code, difficulty, title, statement, category,
+							toJsonString(testCases[0].input), toJsonString(testCases[0].output), testCases[0].input.desc || "",
+							toJsonString(testCases[1].input), toJsonString(testCases[1].output), testCases[1].input.desc || "",
+							toJsonString(testCases[2].input), toJsonString(testCases[2].output), testCases[2].input.desc || "",
+							toJsonString(testCases[3].input), toJsonString(testCases[3].output), testCases[3].input.desc || "",
+							toJsonString(testCases[4].input), toJsonString(testCases[4].output), testCases[4].input.desc || "",
+							toJsonString(testCases[5].input), toJsonString(testCases[5].output), testCases[5].input.desc || "",
+							toJsonString(testCases[6].input), toJsonString(testCases[6].output), testCases[6].input.desc || "",
+							toJsonString(testCases[7].input), toJsonString(testCases[7].output), testCases[7].input.desc || "",
+							toJsonString(testCases[8].input), toJsonString(testCases[8].output), testCases[8].input.desc || "",
+							toJsonString(testCases[9].input), toJsonString(testCases[9].output), testCases[9].input.desc || "",
+							id
+						).run();
 
-				const result = await env2.DB.prepare(insertQuery)
-					.bind(
-						code, difficulty, title, statement, category,
-						toJsonString(testCases[0].input), toJsonString(testCases[0].output),
-						toJsonString(testCases[1].input), toJsonString(testCases[1].output),
-						toJsonString(testCases[2].input), toJsonString(testCases[2].output),
-						toJsonString(testCases[3].input), toJsonString(testCases[3].output),
-						toJsonString(testCases[4].input), toJsonString(testCases[4].output),
-						toJsonString(testCases[5].input), toJsonString(testCases[5].output),
-						toJsonString(testCases[6].input), toJsonString(testCases[6].output),
-						toJsonString(testCases[7].input), toJsonString(testCases[7].output),
-						toJsonString(testCases[8].input), toJsonString(testCases[8].output),
-						toJsonString(testCases[9].input), toJsonString(testCases[9].output)
-					)
-					.run();
+					return jsonResponse({ success: true, id });
+				} else {
+					// Unconditionally INSERT (Allows duplicate question_code)
+					const insertQuery = `
+						INSERT INTO questions
+						(
+							question_code, difficulty, question_title, problem_statement, category,
+							test_case_input_1,  test_case_output_1,  test_case_desc_1,
+							test_case_input_2,  test_case_output_2,  test_case_desc_2,
+							test_case_input_3,  test_case_output_3,  test_case_desc_3,
+							test_case_input_4,  test_case_output_4,  test_case_desc_4,
+							test_case_input_5,  test_case_output_5,  test_case_desc_5,
+							test_case_input_6,  test_case_output_6,  test_case_desc_6,
+							test_case_input_7,  test_case_output_7,  test_case_desc_7,
+							test_case_input_8,  test_case_output_8,  test_case_desc_8,
+							test_case_input_9,  test_case_output_9,  test_case_desc_9,
+							test_case_input_10, test_case_output_10, test_case_desc_10
+						)
+						VALUES (
+							?, ?, ?, ?, ?,
+							?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+						)
+					`;
 
-				return jsonResponse({ success: true, id: result.lastRowId ?? result.meta?.last_row_id ?? null });
+					const result = await env2.DB.prepare(insertQuery)
+						.bind(
+							code, difficulty, title, statement, category,
+							toJsonString(testCases[0].input), toJsonString(testCases[0].output), testCases[0].input.desc || "",
+							toJsonString(testCases[1].input), toJsonString(testCases[1].output), testCases[1].input.desc || "",
+							toJsonString(testCases[2].input), toJsonString(testCases[2].output), testCases[2].input.desc || "",
+							toJsonString(testCases[3].input), toJsonString(testCases[3].output), testCases[3].input.desc || "",
+							toJsonString(testCases[4].input), toJsonString(testCases[4].output), testCases[4].input.desc || "",
+							toJsonString(testCases[5].input), toJsonString(testCases[5].output), testCases[5].input.desc || "",
+							toJsonString(testCases[6].input), toJsonString(testCases[6].output), testCases[6].input.desc || "",
+							toJsonString(testCases[7].input), toJsonString(testCases[7].output), testCases[7].input.desc || "",
+							toJsonString(testCases[8].input), toJsonString(testCases[8].output), testCases[8].input.desc || "",
+							toJsonString(testCases[9].input), toJsonString(testCases[9].output), testCases[9].input.desc || ""
+						)
+						.run();
 
+					return jsonResponse({ success: true, id: result.lastRowId ?? result.meta?.last_row_id ?? null });
+				}
 			} catch (err) {
 				return jsonResponse({ success: false, error: String(err) }, 500);
 			}
@@ -465,9 +500,60 @@ var worker_default = {
 		if (url.pathname === "/questions" && method === "GET") {
 			try {
 				const result = await db.prepare(`SELECT * FROM questions`).all();
+				let questions = result.results || [];
 
-				return jsonResponse({ success: true, questions: result.results });
+				// Consolidation logic: ensure every question object has a standard 'test_case_desc_N' attribute
+				// either from its dedicated column or extracted from JSON.
+				questions = questions.map(q => {
+					for (let i = 1; i <= 10; i++) {
+						const targetKey = `test_case_desc_${i}`;
+						// See if any of the possible columns have data (case-insensitive check)
+						const searchPatterns = [
+							`test_case_desc_${i}`, `test_case_desc${i}`,
+							`desc_${i}`, `desc${i}`, `desc ${i}`,
+							`description_${i}`, `description${i}`, `description ${i}`,
+							`Test Case Desc ${i}`
+						];
 
+						let foundValue = "";
+						// 1. Check direct properties
+						for (const pattern of searchPatterns) {
+							if (q[pattern]) {
+								foundValue = q[pattern];
+								break;
+							}
+						}
+
+						// 2. Case insensitive fallback check (if D1 returned keys in weird casing)
+						if (!foundValue) {
+							const keys = Object.keys(q);
+							for (const pattern of searchPatterns) {
+								const matchingKey = keys.find(k => k.toLowerCase() === pattern.toLowerCase());
+								if (matchingKey && q[matchingKey]) {
+									foundValue = q[matchingKey];
+									break;
+								}
+							}
+						}
+
+						// 3. Last fallback: extract from JSON in test_case_input_N
+						if (!foundValue) {
+							try {
+								const inputVal = q[`test_case_input_${i}`];
+								if (inputVal) {
+									const p = JSON.parse(inputVal);
+									if (p && p.desc) foundValue = p.desc;
+								}
+							} catch (e) { }
+						}
+
+						// Ensure the standard key is populated
+						q[targetKey] = foundValue;
+					}
+					return q;
+				});
+
+				return jsonResponse({ success: true, questions });
 			} catch (err) {
 				return jsonResponse({ success: false, error: String(err) }, 500);
 			}
@@ -577,6 +663,42 @@ var worker_default = {
 			}
 		}
 
+		// GET /coding-results-realtime - Aggregates from question_submissions
+		if (url.pathname === "/coding-results-realtime" && method === "GET") {
+			try {
+				const query = `
+					WITH LatestSubmissions AS (
+						SELECT 
+							s.team_code, 
+							s.question_code, 
+							MAX(s.score) as max_score,
+							q.difficulty,
+							q.category as question_category
+						FROM question_submissions s
+						JOIN questions q ON s.question_code = q.id
+						GROUP BY s.team_code, s.question_code
+					)
+					SELECT 
+						team_code,
+						COUNT(*) as attempted,
+						SUM(max_score * (CASE 
+								WHEN difficulty IN ('super_easy', 'Easy') THEN 2
+								WHEN difficulty IN ('easy', 'Normal') THEN 5
+								WHEN difficulty IN ('normal', 'Hard') THEN 7
+								WHEN difficulty IN ('hard', 'extreme', 'Extreme') THEN 10
+								ELSE 0
+							END) / 100.0) as weighted_score,
+						AVG(CASE WHEN question_category = 'primary' THEN max_score ELSE NULL END) as primary_avg
+					FROM LatestSubmissions
+					GROUP BY team_code
+				`;
+				const { results } = await db.prepare(query).all();
+				return jsonResponse(results);
+			} catch (err) {
+				return jsonResponse({ error: String(err) }, 500);
+			}
+		}
+
 		if (url.pathname === "/scores" && method === "POST") {
 			try {
 				const { judge_id, team_code, scores } = await request.json();
@@ -617,6 +739,22 @@ var worker_default = {
 				return jsonResponse(results);
 			} catch (e) {
 				return jsonResponse({ error: e.message }, 500);
+			}
+		}
+
+		// GET /migrate-difficulty - One-time migration to clean up DB labels
+		if (url.pathname === "/migrate-difficulty" && method === "GET") {
+			try {
+				const stmts = [
+					db.prepare("UPDATE questions SET difficulty = 'super_easy' WHERE difficulty = 'Easy'"),
+					db.prepare("UPDATE questions SET difficulty = 'easy' WHERE difficulty = 'Normal'"),
+					db.prepare("UPDATE questions SET difficulty = 'normal' WHERE difficulty = 'Hard'"),
+					db.prepare("UPDATE questions SET difficulty = 'hard' WHERE difficulty IN ('Extreme', 'extreme')")
+				];
+				await db.batch(stmts);
+				return jsonResponse({ success: true, message: "Database difficulty names migrated successfully!" });
+			} catch (err) {
+				return jsonResponse({ success: false, error: String(err) }, 500);
 			}
 		}
 

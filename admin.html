@@ -884,10 +884,18 @@
                   <label class="muted" name="Marks" for="MarkSelect">💯 Difficulty Level</label>
                   <select id="MarkSelect" style="max-width: 14rem;">
                     <option value="">— Select Difficulty —</option>
-                    <option value="Easy"> Super Easy 2% </option>
-                    <option value="Normal"> Easy 5% </option>
-                    <option value="Hard"> Normal 7% </option>
-                    <option value="Extreme"> Hard 10% </option>
+                    <option value="super_easy">Super Easy</option>
+                    <option value="easy">Easy</option>
+                    <option value="normal">Normal</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+
+                <div class="assign-col">
+                  <label class="muted" for="nq_category">📂 Target Category</label>
+                  <select id="nq_category" style="max-width: 14rem;">
+                    <option value="secondary">Secondary Only</option>
+                    <option value="general">General (Show to All)</option>
                   </select>
                 </div>
 
@@ -1020,10 +1028,18 @@
                 <label class="muted" name="Marks" for="pq_MarkSelect">💯 Difficulty Level</label>
                 <select id="pq_MarkSelect" style="max-width: 14rem;">
                   <option value="">— Select Difficulty —</option>
-                  <option value="Easy"> Super Easy 2% </option>
-                  <option value="Normal"> Easy 5% </option>
-                  <option value="Hard"> Normal 7% </option>
-                  <option value="Extreme"> Hard 10% </option>
+                  <option value="super_easy">Super Easy</option>
+                  <option value="easy">Easy</option>
+                  <option value="normal">Normal</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+
+              <div class="assign-col">
+                <label class="muted" for="pq_category">📂 Target Category</label>
+                <select id="pq_category" style="max-width: 14rem;">
+                  <option value="primary">Primary Only</option>
+                  <option value="general">General (Show to All)</option>
                 </select>
               </div>
 
@@ -1144,6 +1160,7 @@
     const JUDGES_API = `${API}/judges`;
     const STUDENTS_API = `${API}/student_accounts`; // Base for students if needed
     let allJudges = [];
+    let editingQuestionId = null;
 
     /* ===============================
        1. Panel Switching (Toolbar)
@@ -1315,6 +1332,7 @@
 
     let allTeams = [];
     let cachedContestResults = []; // Cache the results so they persist
+    let realtimeMapCache = {};
 
     async function fetchTeams() {
       console.log("🔄 fetchTeams called");
@@ -1339,7 +1357,23 @@
           }
         } catch (e) { console.warn("Could not fetch scores for auto-calc", e); }
 
-        // 3. Merge Scores into Teams (Trimmed Mean Logic)
+        // 3. Fetch Coding Results (Real-time and Final)
+        try {
+          const resRealtime = await fetch(`${API}/coding-results-realtime`);
+          if (resRealtime.ok) {
+            const realtimeData = await resRealtime.json();
+            const realtimeMap = {};
+            realtimeData.forEach(r => realtimeMap[r.team_code] = r);
+            realtimeMapCache = realtimeMap;
+          }
+
+          const resContest = await fetch(`${API}/tier1-results`);
+          if (resContest.ok) {
+            cachedContestResults = await resContest.json();
+          }
+        } catch (e) { console.warn("Could not fetch contest results", e); }
+
+        // 4. Merge Scores into Teams (Trimmed Mean Logic)
         allTeams = allTeams.map(team => {
           const scores = scoreMap[team.team_code];
           if (!scores) return team; // No scores yet
@@ -1410,9 +1444,22 @@
         });
 
         allTeams.forEach(team => {
+          // Priority 1: Real-time aggregated results (most up-to-date)
+          const rt = realtimeMapCache[team.team_code];
+          if (rt) {
+            // Priority: Weighted score if > 0, else primary avg
+            team.contest_score = (rt.weighted_score > 0) ? rt.weighted_score : rt.primary_avg;
+            team.questions_attempted = rt.attempted;
+            team.contest_is_realtime = true;
+          }
+
+          // Priority 2: Final results (includes exact time)
           if (resultsMap[team.team_code]) {
-            team.contest_score = resultsMap[team.team_code].total_score;
-            team.contest_time = resultsMap[team.team_code].total_time;
+            const r = resultsMap[team.team_code];
+            team.contest_score = r.total_score;
+            team.contest_time = r.total_time;
+            team.questions_attempted = r.questions_attempted;
+            team.contest_is_realtime = false;
           }
         });
       }
@@ -1508,8 +1555,9 @@
               <th>Team Name</th>
               <th>Category</th>
               <th>Students</th>
-              <th style="background: #fef2f2;">Coding Score</th>
-              <th>Time Taken</th>
+              <th style="background: #fef2f2;">Weighted Marks</th>
+              <th style="background: #fef2f2;">Attempted</th>
+              <th>Final Time</th>
             </tr>
           </thead>`;
 
@@ -1553,13 +1601,15 @@
       };
 
       const renderRowCoding = (team) => {
+        const scoreLabel = (team.contest_score != null ? team.contest_score.toFixed(2) : "—");
         return `
             <tr data-team-code="${team.team_code}">
               <td>${team.team_code || '—'}</td>
               <td>${team.team_name || '—'}</td>
               <td>${team.category || '—'}</td>
               <td><div style="font-size: 11px; white-space: pre-wrap; max-width: 150px;">${team.student_names || '—'}</div></td>
-              <td style="background: #fdf2f2; font-weight: bold; color: #991b1b;">${(team.contest_score != null) ? team.contest_score + '%' : '—'}</td>
+              <td style="background: #fdf2f2; font-weight: bold; color: #991b1b; text-align:center;">${scoreLabel} ${team.contest_is_realtime ? '<small style="color:#666; font-weight:normal;">(Live)</small>' : ''}</td>
+              <td style="background: #fdf2f2; text-align: center;">${team.questions_attempted || '0'}</td>
               <td>${team.contest_time || '—'}</td>
             </tr>`;
       };
@@ -1711,8 +1761,9 @@
         "Team Code",
         "Team Name",
         "Category",
-        "Coding Score",
-        "Time Taken"
+        "Weighted Marks",
+        "Attempted",
+        "Final Time"
       ] : [
         "Team Code",
         "Team Name",
@@ -1735,7 +1786,8 @@
             `"${(team.team_code || '').replace(/"/g, '""')}"`,
             `"${(team.team_name || '').replace(/"/g, '""')}"`,
             `"${(team.category || '').replace(/"/g, '""')}"`,
-            team.contest_score != null ? team.contest_score + "%" : "—",
+            team.contest_score != null ? team.contest_score.toFixed(2) : "—",
+            team.questions_attempted || "0",
             `"${(team.contest_time || '').replace(/"/g, '""')}"`
           ].join(",");
         } else {
@@ -2791,11 +2843,12 @@
       statusEl.textContent = "Saving question…";
 
       const payload = {
+        id: editingQuestionId,
         code: document.getElementById("nq_question_code").value,
         difficulty: document.getElementById("MarkSelect").value,
         title: document.getElementById("nq_question_title").value,
         statement: document.getElementById("nq_question_statement").value,
-        category: "secondary",
+        category: document.getElementById("nq_category").value,
         testCases: Array.from({ length: 10 }, (_, i) => ({
           input: {
             raw: document.getElementById(`nq_question_input${i + 1}`).value,
@@ -2840,11 +2893,12 @@
       statusEl.textContent = "Saving question…";
 
       const payload = {
+        id: editingQuestionId,
         code: document.getElementById("pq_question_code").value,
         difficulty: document.getElementById("pq_MarkSelect").value,
         title: document.getElementById("pq_question_title").value,
         statement: document.getElementById("pq_question_statement").value,
-        category: "primary",
+        category: document.getElementById("pq_category").value,
         testCases: Array.from({ length: 10 }, (_, i) => ({
           input: {
             raw: document.getElementById(`pq_question_input${i + 1}`).value,
@@ -2882,10 +2936,12 @@
     }
 
     function clearQuestionForm() {
+      editingQuestionId = null;
       document.getElementById("nq_question_code").value = '';
       document.getElementById("MarkSelect").value = '';
       document.getElementById("nq_question_title").value = '';
       document.getElementById("nq_question_statement").value = '';
+      document.getElementById("nq_category").value = 'secondary';
       for (let i = 1; i <= 10; i++) {
         document.getElementById(`nq_question_desc${i}`).value = '';
         document.getElementById(`nq_question_input${i}`).value = '';
@@ -2895,10 +2951,12 @@
     }
 
     function clearQuestionFormPrimary() {
+      editingQuestionId = null;
       document.getElementById("pq_question_code").value = '';
       document.getElementById("pq_MarkSelect").value = '';
       document.getElementById("pq_question_title").value = '';
       document.getElementById("pq_question_statement").value = '';
+      document.getElementById("pq_category").value = 'primary';
       for (let i = 1; i <= 10; i++) {
         document.getElementById(`pq_question_desc${i}`).value = '';
         document.getElementById(`pq_question_input${i}`).value = '';
@@ -3091,20 +3149,27 @@
 
     // Expose to global scope
     window.editQuestion = function (q, isPrimary) {
+      editingQuestionId = q.id;
+      const diffMapping = { "Easy": "super_easy", "Normal": "easy", "Hard": "normal", "Extreme": "hard" };
+      const currentDiff = diffMapping[q.difficulty] || q.difficulty || "";
+
       if (isPrimary) {
         switchQuestionModePrimary('create');
         // scroll to top of panel?
         document.getElementById('createQuestionContainerPrimary').scrollIntoView({ behavior: 'smooth' });
 
         document.getElementById("pq_question_code").value = q.question_code || "";
-        document.getElementById("pq_MarkSelect").value = q.difficulty || "";
+        document.getElementById("pq_MarkSelect").value = currentDiff;
         document.getElementById("pq_question_title").value = q.question_title || "";
         document.getElementById("pq_question_statement").value = q.problem_statement || "";
+        document.getElementById("pq_category").value = q.category || "primary";
 
         for (let i = 1; i <= 10; i++) {
           const inpVal = q[`test_case_input_${i}`];
           const outVal = q[`test_case_output_${i}`];
+          const descVal = q[`test_case_desc_${i}`] || q[`test_case_desc${i}`] || q[`desc_${i}`] || q[`desc${i}`] || q[`desc ${i}`];
           document.getElementById(`pq_question_input${i}`).value = parseStoredIO(inpVal);
+          document.getElementById(`pq_question_desc${i}`).value = descVal || parseStoredIO(inpVal, true);
           document.getElementById(`pq_question_out${i}`).value = parseStoredIO(outVal);
         }
 
@@ -3116,14 +3181,17 @@
         document.getElementById('createQuestionContainer').scrollIntoView({ behavior: 'smooth' });
 
         document.getElementById("nq_question_code").value = q.question_code || "";
-        document.getElementById("MarkSelect").value = q.difficulty || "";
+        document.getElementById("MarkSelect").value = currentDiff;
         document.getElementById("nq_question_title").value = q.question_title || "";
         document.getElementById("nq_question_statement").value = q.problem_statement || "";
+        document.getElementById("nq_category").value = q.category || "secondary";
 
         for (let i = 1; i <= 10; i++) {
           const inpVal = q[`test_case_input_${i}`];
           const outVal = q[`test_case_output_${i}`];
+          const descVal = q[`test_case_desc_${i}`] || q[`test_case_desc${i}`] || q[`desc_${i}`] || q[`desc${i}`] || q[`desc ${i}`];
           document.getElementById(`nq_question_input${i}`).value = parseStoredIO(inpVal);
+          document.getElementById(`nq_question_desc${i}`).value = descVal || parseStoredIO(inpVal, true);
           document.getElementById(`nq_question_out${i}`).value = parseStoredIO(outVal);
         }
 
@@ -3132,16 +3200,17 @@
       }
     };
 
-    function parseStoredIO(val) {
+    function parseStoredIO(val, getDesc = false) {
       if (!val) return "";
       try {
         const p = JSON.parse(val);
-        if (p && typeof p === 'object' && p.raw !== undefined) {
-          return p.raw;
+        if (p && typeof p === 'object') {
+          if (getDesc) return p.desc || "";
+          if (p.raw !== undefined) return p.raw;
         }
-        return val;
+        return getDesc ? "" : val;
       } catch (e) {
-        return val;
+        return getDesc ? "" : val;
       }
     }
 
