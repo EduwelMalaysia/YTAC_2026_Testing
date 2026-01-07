@@ -752,6 +752,8 @@
                   <th style="padding: 12px; border-bottom: 2px solid #e2e8f0;">Category</th>
                   <th style="padding: 12px; border-bottom: 2px solid #e2e8f0;">Voted By (Team)</th>
                   <th style="padding: 12px; border-bottom: 2px solid #e2e8f0;">Status</th>
+                  <th style="padding: 12px; border-bottom: 2px solid #e2e8f0;">Action</th>
+                  <th style="padding: 12px; border-bottom: 2px solid #e2e8f0;">Action</th>
                 </tr>
               </thead>
               <tbody id="votingTableBody">
@@ -2090,7 +2092,8 @@
         // Assuming GET /votes returns a list of all vote records
         // If GET /votes is not standard, we might need to check how to get them.
         // As per user request "use the votes table", we assume endpoint exists.
-        const votesRes = await fetch(`${API}/votes`);
+        // 2. Fetch Votes
+        const votesRes = await fetch(`${API}/votes?t=${Date.now()}`);
         let votes = [];
         if (votesRes.ok) {
           votes = await votesRes.json();
@@ -2133,57 +2136,9 @@
 
           const row = document.createElement("tr");
 
-          // Determine who voted (if we have that info)
-          // The current logic uses a Set<team_code> for presence check.
-          // To show WHO voted, we need a Map<voted_for_team, voter_team>.
-          // However, the votes table structure in worker is: student_id (voter), category, voted_for (candidate).
-          // fetchVotingStatus logic in step 353 lines 2098 just builds a Set of VOTERS.
-          // "Total Teams Voted" means "How many teams have CAST a vote".
-          // The table iterates over TEAMS (as candidates? or voters?).
-          // "Team Code" column in the table comes from `teamsList`.
-          // If this table lists ALL teams and shows if they have voted, then "Voted By" doesn't make sense unless it means "Who voted for THIS team?".
-          // BUT, `fetchVotingStatus` counts "votedCount" based on `votedTeamCodes.has(team.team_code)`.
-          // This implies the table lists TEAMS and checks if THEY voted.
-          // So "Status" = "Voted" means "This team has cast a vote".
-          // "Voted By (Team)" would mean "Which team voted for this team?" -> That's "Voting Results" (who got votes).
-          // The user asked: "see who voted? like which team voted".
-          // This implies seeing the VOTER.
-          // If the table lists potential VOTERS (all teams), then "Status" already shows IF they voted.
-          // Maybe the user wants to know "Who did they vote for?" OR "Who voted for them?".
-          // "see who voted? like which team voted" -> "Which team voted" sounds like identification.
-          // If the table is "List of Teams", and Status is "Voted", then we know WHO voted (the team in the row).
-          // Maybe the user thinks the current table doesn't show the team code? It DOES (col 1).
-          // OR maybe the user wants to see the raw votes?
-          // "Which team voted" -> Maybe they want to see the `student_id` used?
-          // But `student_id` IS `team_code`.
-          // Let's assume the user wants to see the "Voted For" info, or maybe just clarity.
-          // Wait, "see who voted? like which team voted".
-          // If I have a list of teams:
-          // Team A | Voted
-          // Team B | Not Voted
-          // I already see who voted.
-          // Maybe the table *currently* doesn't show Team Code clearly?
-          // Line 2127: `<td>${team.team_code}</td>`. It does.
-          // Perhaps the user wants to see the VOTES themselves? (Who they voted for?)
-          // "like which team voted" -> This emphasizes the ACTOR.
-          // If the previous table didn't show team code (maybe just name?), then adding code helps.
-          // But it serves Team Code.
-          // Maybe the user means "Show me the list of votes directly"?
-          // "remove the tier 1 results tab, coding results is enough. also... see who voted".
-          // Tier 1 results was a results tab.
-          // Maybe "Voting Status" panel is new or existing?
-          // Existing panel (from code).
-          // I'll add a column "Votes Cast" to show whom they voted for?
-          // "Votes Cast": "IT: Team X, IM: Team Y".
-          // That answers "Who voted" (identifying them) and confirms their vote.
-          // I will fetch the actual votes map.
-
+          // Determine votes cast by this team
           let votesCastStr = "—";
           if (hasVoted) {
-            // Find votes by this team
-            // uniqueVoters map: team_code -> { category: voted_for, ... }
-            // I need to parse the votes properly in the main logic first.
-            // I'll update the loop below.
             const myVotes = votesList.filter(v => (v.student_id || v.team_code) === team.team_code);
             if (myVotes.length > 0) {
               votesCastStr = myVotes.map(v => `${v.category}: ${v.voted_for}`).join(", ");
@@ -2191,14 +2146,17 @@
           }
 
           row.innerHTML = `
-                    <td>${team.team_code}</td>
-                    <td>${team.team_name}</td>
-                    <td>${team.category}</td>
-                    <td style="font-size: 0.85em; color: #555;">${votesCastStr}</td>
-                    <td style="text-align: center;">
-                        ${hasVoted ? '<span style="color:green; font-weight:bold;">✅ Voted</span>' : '<span style="color:red;">❌ Not Voted</span>'}
-                    </td>
-                `;
+              <td>${team.team_code}</td>
+              <td>${team.team_name}</td>
+              <td>${team.category}</td>
+              <td style="font-size: 0.85em; color: #555;">${votesCastStr}</td>
+              <td style="text-align: center;">
+                  ${hasVoted ? '<span style="color:green; font-weight:bold;">✅ Voted</span>' : '<span style="color:red;">❌ Not Voted</span>'}
+              </td>
+              <td style="text-align: center;">
+                ${hasVoted ? `<button class="btnr" style="padding:4px 8px; font-size:12px;" onclick="clearVotes('${team.team_code}')">🗑️ Clear</button>` : ''}
+              </td>
+          `;
           tableBody.appendChild(row);
         });
 
@@ -2209,7 +2167,28 @@
 
       } catch (err) {
         console.error("Error fetching voting status:", err);
-        tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Error loading data: ${err.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Error loading data: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function clearVotes(teamCode) {
+      if (!confirm(`Are you sure you want to clear votes for team ${teamCode}? This cannot be undone.`)) return;
+
+      try {
+        const res = await fetch(`${API}/votes`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_id: teamCode })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert("Votes cleared successfully.");
+          fetchVotingStatus(); // Refresh table
+        } else {
+          alert("Failed to clear: " + (data.error || data.message));
+        }
+      } catch (err) {
+        alert("Error: " + err.message);
       }
     }
 

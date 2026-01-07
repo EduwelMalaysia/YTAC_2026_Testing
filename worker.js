@@ -487,6 +487,20 @@ var worker_default = {
 		}
 		// END FIX
 
+		if (url.pathname === "/votes" && method === "DELETE") {
+			const { student_id } = await request.json();
+			if (!student_id) return jsonResponse({ error: "student_id required" }, 400);
+
+			try {
+				const res = await env2.DB.prepare("DELETE FROM votes WHERE student_id = ?").bind(student_id).run();
+				// Also try deleting by team_code column if schema varies (just in case)
+				// But based on POST /votes, we insert into student_id.
+				return jsonResponse({ success: true, changes: res.meta?.changes });
+			} catch (e) {
+				return jsonResponse({ error: String(e.message) }, 500);
+			}
+		}
+
 		if (url.pathname === "/questions" && method === "GET") {
 			try {
 				const result = await db.prepare(`SELECT * FROM questions`).all();

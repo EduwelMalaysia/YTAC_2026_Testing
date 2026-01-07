@@ -839,13 +839,8 @@
 
           const team_code = localStorage.getItem("team_code");
 
-          if (team_code.startsWith("THP")) {
-            // Primary -> Block-Based
-            window.location.href = "blockbased.html";
-          } else {
-            // Secondary -> Text-Based 
-            window.location.href = "textbased.html";
-          }
+          // All teams go to Text-Based 
+          window.location.href = "textbased.html";
         });
 
         document.getElementById("btnFileSubmission").addEventListener("click", () => {
