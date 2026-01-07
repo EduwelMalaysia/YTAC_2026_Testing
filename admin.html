@@ -850,103 +850,116 @@
 
 
         <section id="panelQuestion" class="panel card" role="tabpanel" aria-labelledby="btnQuestion">
-          <h2>Create Questions Form</h2>
-          <h4>You are about to create a Hackathon Question, please go through everything carefully to avoid any mix-ups.
-          </h4>
-          <div class="sectionbar" id="newQuestionBar" style="gap:.5rem; align-items:center;">
-
-
-            <div class="user-input">
-
-              <label for="Question Code">💻 Question Code</label>
-              <input id="nq_question_code" type="text" name="Question Code" placeholder="Question code (e.g. Q002)"
-                style="max-width:14rem;">
-
-              <div class="assign-col">
-                <label class="muted" name="Marks" for="MarkSelect">💯 Difficulty Level</label>
-                <select id="MarkSelect" style="max-width: 14rem;">
-                  <option value="">— Select Difficulty —</option>
-                  <option value="Easy"> Super Easy 2% </option>
-                  <option value="Normal"> Easy 5% </option>
-                  <option value="Hard"> Normal 7% </option>
-                  <option value="Extreme"> Hard 10% </option>
-                </select>
-              </div>
-
-              <label for="Title">✏️ Title:</label>
-              <input type="text" id="nq_question_title" name="Title" placeholder="Enter your title here..."
-                style="width:50rem" />
-              <label for="Problem Statement"> 🧩 Problem Statement:</label>
-              <textarea type="text" id="nq_question_statement" name="Problem Statement"
-                placeholder="Enter your Statement here..." style="width:50rem; height: 14rem;"></textarea>
-              <h3>📝 Test Cases</h3>
-              <label for="Test Case1">Test Case 1:</label>
-              <textarea id="nq_question_input1" type="text" placeholder="Input..."
-                style="width:25rem; height:15rem"></textarea>
-              <textarea id="nq_question_out1" type="text" placeholder="Output..."
-                style="width:25rem; height:15rem"></textarea>
-              <label for="Test Case2">Test Case 2:</label>
-              <textarea id="nq_question_input2" type="text" placeholder="Input..."
-                style="width:25rem; height:15rem"></textarea>
-              <textarea id="nq_question_out2" type="text" placeholder="Output..."
-                style="width:25rem; height:15rem"></textarea>
-              <label for="Test Case3">Test Case 3:</label>
-              <textarea id="nq_question_input3" type="text" placeholder="Input..."
-                style="width:25rem; height:15rem"></textarea>
-              <textarea id="nq_question_out3" type="text" placeholder="Output..."
-                style="width:25rem; height:15rem"></textarea>
-              <label for="Test Case4">Test Case 4:</label>
-              <textarea id="nq_question_input4" type="text" placeholder="Input..."
-                style="width:25rem; height:15rem"></textarea>
-              <textarea id="nq_question_out4" type="text" placeholder="Output..."
-                style="width:25rem; height:15rem"></textarea>
-              <label for="Test Case5">Test Case 5:</label>
-              <textarea id="nq_question_input5" type="text" placeholder="Input..."
-                style="width:25rem; height:15rem"></textarea>
-              <textarea id="nq_question_out5" type="text" placeholder="Output..."
-                style="width:25rem; height:15rem"></textarea>
-              <label for="Test Case6">Test Case 6:</label>
-              <textarea id="nq_question_input6" type="text" placeholder="Input..."
-                style="width:25rem; height:15rem"></textarea>
-              <textarea id="nq_question_out6" type="text" placeholder="Output..."
-                style="width:25rem; height:15rem"></textarea>
-              <label for="Test Case7">Test Case 7:</label>
-              <textarea id="nq_question_input7" type="text" placeholder="Input..."
-                style="width:25rem; height:15rem"></textarea>
-              <textarea id="nq_question_out7" type="text" placeholder="Output..."
-                style="width:25rem; height:15rem"></textarea>
-              <label for="Test Case8">Test Case 8:</label>
-              <textarea id="nq_question_input8" type="text" placeholder="Input..."
-                style="width:25rem; height:15rem"></textarea>
-              <textarea id="nq_question_out8" type="text" placeholder="Output..."
-                style="width:25rem; height:15rem"></textarea>
-              <label for="Test Case9">Test Case 9:</label>
-              <textarea id="nq_question_input9" type="text" placeholder="Input..."
-                style="width:25rem; height:15rem"></textarea>
-              <textarea id="nq_question_out9" type="text" placeholder="Output..."
-                style="width:25rem; height:15rem"></textarea>
-              <label for="Test Case10">Test Case 10:</label>
-              <textarea id="nq_question_input10" type="text" placeholder="Input..."
-                style="width:25rem; height:15rem"></textarea>
-              <textarea id="nq_question_out10" type="text" placeholder="Output..."
-                style="width:25rem; height:15rem"></textarea>
-              <button class="tbtn" id="btnQuestionRefresh">⟳ Refresh</button>
-              <button class="tbtn" id="nq_submit">➕ Submit</button>
-              <p id="questionStatus" style="margin-top:10px; font-weight:600; color:#555;"></p>
-              <!-- Status message appears here -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2>Manage Questions</h2>
+            <div style="display: flex; gap: 10px;">
+              <button id="btnModeCreate" class="tbtn active" style="background:var(--brand); color:#fff;">➕ Create
+                New</button>
+              <button id="btnModeList" class="tbtn">📋 View List</button>
             </div>
-
-
-
-            <div class="spacer"></div>
-            <span id="newQuestionStatus" class="muted" style="min-width:12rem;"></span>
           </div>
 
-          <!-- Student list display -->
-          <section id="questionListPanel" style="margin-top:1rem;">
-            <div id="questionListStatus" style="font-size:0.9rem;color:#666;"></div>
+          <div id="createQuestionContainer">
+            <h4>Fill in the details below to create or update a question.</h4>
+            <div class="sectionbar" id="newQuestionBar" style="gap:.5rem; align-items:center;">
+
+
+              <div class="user-input">
+
+                <label for="Question Code">💻 Question Code</label>
+                <input id="nq_question_code" type="text" name="Question Code" placeholder="Question code (e.g. Q002)"
+                  style="max-width:14rem;">
+
+                <div class="assign-col">
+                  <label class="muted" name="Marks" for="MarkSelect">💯 Difficulty Level</label>
+                  <select id="MarkSelect" style="max-width: 14rem;">
+                    <option value="">— Select Difficulty —</option>
+                    <option value="Easy"> Super Easy 2% </option>
+                    <option value="Normal"> Easy 5% </option>
+                    <option value="Hard"> Normal 7% </option>
+                    <option value="Extreme"> Hard 10% </option>
+                  </select>
+                </div>
+
+                <label for="Title">✏️ Title:</label>
+                <input type="text" id="nq_question_title" name="Title" placeholder="Enter your title here..."
+                  style="width:50rem" />
+                <label for="Problem Statement"> 🧩 Problem Statement:</label>
+                <textarea type="text" id="nq_question_statement" name="Problem Statement"
+                  placeholder="Enter your Statement here..." style="width:50rem; height: 14rem;"></textarea>
+                <h3>📝 Test Cases</h3>
+                <label for="Test Case1">Test Case 1:</label>
+                <textarea id="nq_question_input1" type="text" placeholder="Input..."
+                  style="width:25rem; height:15rem"></textarea>
+                <textarea id="nq_question_out1" type="text" placeholder="Output..."
+                  style="width:25rem; height:15rem"></textarea>
+                <label for="Test Case2">Test Case 2:</label>
+                <textarea id="nq_question_input2" type="text" placeholder="Input..."
+                  style="width:25rem; height:15rem"></textarea>
+                <textarea id="nq_question_out2" type="text" placeholder="Output..."
+                  style="width:25rem; height:15rem"></textarea>
+                <label for="Test Case3">Test Case 3:</label>
+                <textarea id="nq_question_input3" type="text" placeholder="Input..."
+                  style="width:25rem; height:15rem"></textarea>
+                <textarea id="nq_question_out3" type="text" placeholder="Output..."
+                  style="width:25rem; height:15rem"></textarea>
+                <label for="Test Case4">Test Case 4:</label>
+                <textarea id="nq_question_input4" type="text" placeholder="Input..."
+                  style="width:25rem; height:15rem"></textarea>
+                <textarea id="nq_question_out4" type="text" placeholder="Output..."
+                  style="width:25rem; height:15rem"></textarea>
+                <label for="Test Case5">Test Case 5:</label>
+                <textarea id="nq_question_input5" type="text" placeholder="Input..."
+                  style="width:25rem; height:15rem"></textarea>
+                <textarea id="nq_question_out5" type="text" placeholder="Output..."
+                  style="width:25rem; height:15rem"></textarea>
+                <label for="Test Case6">Test Case 6:</label>
+                <textarea id="nq_question_input6" type="text" placeholder="Input..."
+                  style="width:25rem; height:15rem"></textarea>
+                <textarea id="nq_question_out6" type="text" placeholder="Output..."
+                  style="width:25rem; height:15rem"></textarea>
+                <label for="Test Case7">Test Case 7:</label>
+                <textarea id="nq_question_input7" type="text" placeholder="Input..."
+                  style="width:25rem; height:15rem"></textarea>
+                <textarea id="nq_question_out7" type="text" placeholder="Output..."
+                  style="width:25rem; height:15rem"></textarea>
+                <label for="Test Case8">Test Case 8:</label>
+                <textarea id="nq_question_input8" type="text" placeholder="Input..."
+                  style="width:25rem; height:15rem"></textarea>
+                <textarea id="nq_question_out8" type="text" placeholder="Output..."
+                  style="width:25rem; height:15rem"></textarea>
+                <label for="Test Case9">Test Case 9:</label>
+                <textarea id="nq_question_input9" type="text" placeholder="Input..."
+                  style="width:25rem; height:15rem"></textarea>
+                <textarea id="nq_question_out9" type="text" placeholder="Output..."
+                  style="width:25rem; height:15rem"></textarea>
+                <label for="Test Case10">Test Case 10:</label>
+                <textarea id="nq_question_input10" type="text" placeholder="Input..."
+                  style="width:25rem; height:15rem"></textarea>
+                <textarea id="nq_question_out10" type="text" placeholder="Output..."
+                  style="width:25rem; height:15rem"></textarea>
+                <button class="tbtn" id="btnQuestionRefresh">⟳ Refresh</button>
+                <button class="tbtn" id="nq_submit">➕ Submit</button>
+                <p id="questionStatus" style="margin-top:10px; font-weight:600; color:#555;"></p>
+                <!-- Status message appears here -->
+              </div>
+
+
+
+              <div class="spacer"></div>
+              <span id="newQuestionStatus" class="muted" style="min-width:12rem;"></span>
+            </div>
+          </div> <!-- End createQuestionContainer -->
+
+          <!-- Question List View -->
+          <section id="questionListPanel" style="display: none; margin-top:1rem;">
+            <div class="sectionbar">
+              <span class="muted">Existing Questions</span>
+              <button id="btnRefreshQuestions" class="tbtn">⟳ Refresh</button>
+            </div>
+            <div id="questionListStatus" style="font-size:0.9rem;color:#666; margin-bottom: 8px;"></div>
             <div id="questionListContainer"
-              style="overflow:auto; max-height:420px; border:1px solid #ddd; border-radius:8px;"></div>
+              style="overflow:auto; max-height:600px; border:1px solid #ddd; border-radius:8px;"></div>
           </section>
 
       </div>
@@ -2628,6 +2641,160 @@
       for (let i = 1; i <= 10; i++) {
         document.getElementById(`nq_question_input${i}`).value = '';
         document.getElementById(`nq_question_out${i}`).value = '';
+      }
+      // Reset button text
+      document.getElementById("nq_submit").innerHTML = "➕ Submit";
+    }
+
+    // --- Question Management Logic ---
+    const btnModeCreate = document.getElementById('btnModeCreate');
+    const btnModeList = document.getElementById('btnModeList');
+    const createContainer = document.getElementById('createQuestionContainer');
+    const listContainer = document.getElementById('questionListPanel');
+    const btnRefreshQuestions = document.getElementById('btnRefreshQuestions');
+
+    btnModeCreate?.addEventListener('click', () => {
+      switchQuestionMode('create');
+    });
+
+    btnModeList?.addEventListener('click', () => {
+      switchQuestionMode('list');
+      loadQuestions();
+    });
+
+    btnRefreshQuestions?.addEventListener('click', loadQuestions);
+
+    function switchQuestionMode(mode) {
+      if (mode === 'create') {
+        createContainer.style.display = 'block';
+        listContainer.style.display = 'none';
+        btnModeCreate.classList.add('active');
+        btnModeCreate.style.background = 'var(--brand)';
+        btnModeCreate.style.color = '#fff';
+
+        btnModeList.classList.remove('active');
+        btnModeList.style.background = '';
+        btnModeList.style.color = '';
+      } else {
+        createContainer.style.display = 'none';
+        listContainer.style.display = 'block';
+        btnModeList.classList.add('active');
+        btnModeList.style.background = 'var(--brand)';
+        btnModeList.style.color = '#fff';
+
+        btnModeCreate.classList.remove('active');
+        btnModeCreate.style.background = '';
+        btnModeCreate.style.color = '';
+      }
+    }
+
+    async function loadQuestions() {
+      const qStatus = document.getElementById('questionListStatus');
+      const qContainer = document.getElementById('questionListContainer');
+
+      qStatus.textContent = "Loading questions...";
+      qContainer.innerHTML = "";
+
+      try {
+        const res = await fetch(`${API}/questions`);
+        const data = await res.json();
+
+        if (!data.success) throw new Error(data.error || "Failed to fetch");
+
+        const questions = data.questions || [];
+        renderQuestionList(questions);
+        qStatus.textContent = `Showing ${questions.length} question(s).`;
+
+      } catch (err) {
+        console.error(err);
+        qStatus.textContent = "Error loading questions: " + err.message;
+      }
+    }
+
+    function renderQuestionList(questions) {
+      const container = document.getElementById('questionListContainer');
+
+      if (questions.length === 0) {
+        container.innerHTML = `<div style="padding:1rem;">No questions found.</div>`;
+        return;
+      }
+
+      const table = document.createElement('table');
+      table.className = "teams-table"; // reuse existing style
+      table.style.width = "100%";
+      table.innerHTML = `
+        <thead>
+          <tr style="background:#f9fafb; text-align:left;">
+            <th style="padding:10px;">Code</th>
+            <th style="padding:10px;">Title</th>
+            <th style="padding:10px;">Difficulty</th>
+            <th style="padding:10px; text-align:right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${questions.map(q => `
+            <tr style="border-bottom:1px solid #eee;">
+              <td style="padding:10px; font-weight:600;">${q.question_code}</td>
+              <td style="padding:10px;">${q.question_title}</td>
+              <td style="padding:10px;">${q.difficulty}</td>
+              <td style="padding:10px; text-align:right;">
+                <button class="tbtn" onclick='editQuestion(${JSON.stringify(q).replace(/'/g, "&#39;")})'>✏️ Edit</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      `;
+      container.appendChild(table);
+    }
+
+    // Expose to global scope for onclick or add event listener differently
+    window.editQuestion = function (q) {
+      // 1. Switch to create mode
+      switchQuestionMode('create');
+
+      // 2. Populate fields
+      document.getElementById("nq_question_code").value = q.question_code || "";
+      document.getElementById("MarkSelect").value = q.difficulty || "";
+      document.getElementById("nq_question_title").value = q.question_title || "";
+      document.getElementById("nq_question_statement").value = q.problem_statement || "";
+
+      // 3. Populate Test Cases
+      // The API returns fields like test_case_input_1, test_case_output_1, etc.
+      // We loop 1 to 10
+      for (let i = 1; i <= 10; i++) {
+        const inpVal = q[`test_case_input_${i}`];
+        const outVal = q[`test_case_output_${i}`];
+
+        // The values might be JSON strings or raw strings depending on how they were stored/returned
+        // The worker code 'toJsonString' stores them as JSON strings.
+        // We should try to parse them if they look like JSON, to display 'raw' content to user if applicable.
+        // However, the input textarea expects what the user typed.
+        // If stored as "{\"raw\":\"abc\",\"type\":\"input\"}", we want "abc".
+
+        document.getElementById(`nq_question_input${i}`).value = parseStoredIO(inpVal);
+        document.getElementById(`nq_question_out${i}`).value = parseStoredIO(outVal);
+      }
+
+      // 4. Update Submit Button
+      const btn = document.getElementById("nq_submit");
+      btn.innerHTML = "💾 Update Question";
+
+      // Scroll to top
+      document.getElementById('createQuestionContainer').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    function parseStoredIO(val) {
+      if (!val) return "";
+      try {
+        // Try parsing outer JSON
+        const p = JSON.parse(val);
+        // If it follows the structure { raw: "...", type: "..." }
+        if (p && typeof p === 'object' && p.raw !== undefined) {
+          return p.raw;
+        }
+        return val; // fallback
+      } catch (e) {
+        return val; // fallback for plain strings
       }
     }
 
