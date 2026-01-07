@@ -313,7 +313,7 @@ function showQuestion(index) {
     // Load starter code into iframe
     // INCREASED TIMEOUT to ensure iframe is ready on production logic
     setTimeout(() => {
-        console.log("Sending starter code to OneCompiler...");
+        // console.log("Sending starter code to OneCompiler...");
         iframe.contentWindow.postMessage({
             eventType: 'populateCode',
             language: currentLanguage,
@@ -563,7 +563,7 @@ function runNextTestCase(code) {
     if (currentTestIndex < testQueue.length) {
         currentTestCase = testQueue[currentTestIndex];
 
-        console.log(`Running test case ${currentTestIndex + 1}/${testQueue.length} with stdin:`, currentTestCase.stdin);
+        // console.log(`Running test case ${currentTestIndex + 1}/${testQueue.length} with stdin:`, currentTestCase.stdin);
 
         // Update status to Running
         const row = document.getElementById(`test-case-row-${currentTestIndex}`);
@@ -591,7 +591,7 @@ function runNextTestCase(code) {
         // Trigger run after a short delay
         // INCREASED due to production latency (50ms -> 500ms)
         setTimeout(() => {
-            console.log("Triggering run execution...");
+            // console.log("Triggering run execution...");
             iframe.contentWindow.postMessage({
                 eventType: 'triggerRun'
             }, '*');
@@ -709,7 +709,7 @@ window.addEventListener('message', function (e) {
         if (currentTestCase) {
             const expectedOutput = currentTestCase.stdout;
             const isCaseCorrect = isAnswerCorrect(currentOutput, expectedOutput);
-            console.log("Run Complete. Expected:", expectedOutput, "Got:", currentOutput);
+            // console.log("Run Complete. Expected:", expectedOutput, "Got:", currentOutput);
 
             if (isCaseCorrect) {
                 passCount++;
