@@ -143,9 +143,7 @@
     let passCount = 0;
     let currentLanguage = "python";
     let currentUser = "";
-    const COMPETITION_START = new Date("2026-01-08T10:00:00+08:00").getTime();
-    const COMPETITION_END = new Date("2026-01-08T12:00:00+08:00").getTime();
-    // const COMPETITION_DURATION = 2 * 60 * 60; // Removed
+    const COMPETITION_DURATION = 2 * 60 * 60; // 2 hours in seconds
 
     const languageFiles = {
         "python": "main.py",
@@ -369,18 +367,10 @@
     // Start timer
     function startTimer() {
         startTime = new Date();
-
         timerInterval = setInterval(() => {
-            const now = Date.now();
-
-            // Check if competition has started
-            if (now < COMPETITION_START) {
-                // Should not happen if start button restricted, but safety:
-                timerDisplay.textContent = "Competition starts at 10:00 AM";
-                return;
-            }
-
-            const remaining = Math.floor((COMPETITION_END - now) / 1000);
+            const now = new Date();
+            const elapsed = Math.floor((now - startTime) / 1000);
+            const remaining = COMPETITION_DURATION - elapsed;
 
             if (remaining <= 0) {
                 endCompetition();
@@ -533,14 +523,6 @@
 
     // Event listeners
     btnStart.addEventListener('click', () => {
-        if (Date.now() < COMPETITION_START) {
-            showModal("Competition Not Started", "The competition starts at 10:00 AM.", null, false);
-            return;
-        }
-        if (Date.now() > COMPETITION_END) {
-            showModal("Competition Ended", "The competition has ended.", null, false);
-            return;
-        }
 
         const username = usernameInput.value.trim();
         if (!username) {
