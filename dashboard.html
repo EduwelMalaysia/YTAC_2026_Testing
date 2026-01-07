@@ -134,16 +134,25 @@
       const saveBtn = document.getElementById("saveBtn");
       const timerBtn = document.getElementById("timerBtn");
 
-      let criteriaList = [];
       let assignedTeamsList = []; // Store globally for re-render
       let myScoresCache = {};     // Store globally to track progress
 
-      const DEFAULT_CRITERIA = [
-        { criteria_code: "creativity", criteria_name: "Creativity" },
-        { criteria_code: "practical", criteria_name: "Practicality" },
-        { criteria_code: "social", criteria_name: "Social Impact" },
-        { criteria_code: "cost", criteria_name: "Cost" },
-        { criteria_code: "presentation", criteria_name: "Presentation" }
+      // REVISED CRITERIA SETS
+      const CRITERIA_IM = [
+        { criteria_code: "C001", criteria_name: "Creativity" },
+        { criteria_code: "C002", criteria_name: "Practicality" },
+        { criteria_code: "C003", criteria_name: "Social Impact" },
+        { criteria_code: "C004", criteria_name: "Cost" },
+        { criteria_code: "C005", criteria_name: "Sustainability" },
+        { criteria_code: "C006", criteria_name: "Presentation" }
+      ];
+
+      const CRITERIA_IT = [
+        { criteria_code: "T001", criteria_name: "Basic Coding" },
+        { criteria_code: "T002", criteria_name: "Code Explanation" },
+        { criteria_code: "T003", criteria_name: "System Flow" },
+        { criteria_code: "T004", criteria_name: "Script Test" },
+        { criteria_code: "T005", criteria_name: "API Usage" }
       ];
 
       // --- TIMER LOGIC ---
@@ -192,23 +201,7 @@
       // --- INIT ---
       async function init() {
         try {
-          // 1. Load Criteria
-          try {
-            const critRes = await fetch(API + "/criteria");
-            if (!critRes.ok) throw new Error("Criteria endpoint failed");
-            const data = await critRes.json();
-            if (Array.isArray(data) && data.length > 0) {
-              criteriaList = data.map(item => ({
-                criteria_code: item.criteria_code || item.code || item.id,
-                criteria_name: item.criteria_name || item.name
-              }));
-            } else { throw new Error("Empty list"); }
-          } catch (e) {
-            console.warn("Using default criteria:", e);
-            criteriaList = DEFAULT_CRITERIA;
-          }
-
-          // 2. Load Assigned Teams AND My Scores (Parallel)
+          // 1. Load Assigned Teams AND My Scores (Parallel)
           const effectiveJudgeId = judge_id.toUpperCase();
 
           const [teamsRes, scoresRes] = await Promise.all([
@@ -226,12 +219,6 @@
           }
 
           // Filter scores for THIS judge only
-          // Structure: [ {judge_id, team_code, criteria_code, score}, ... ]
-          // We just need to know WHICH teams are done.
-          // A team is "done" if we have at least one score entry for it? 
-          // Or strictly strictly speaking if all criteria are filled. 
-          // For simplicity: If ANY score exists for this judge+team, we count it as 'Judged'.
-
           const myScores = allScores.filter(s => (s.judge_id || "").toUpperCase() === effectiveJudgeId);
 
           // Build a Set of completed team codes
@@ -268,7 +255,6 @@
           if (isDone) {
             // Completed Team
             opt.textContent = `✅ ${t.team_code} - ${t.team_name} (Done)`;
-            // User can revisit, but can't edit (handled in logic)
           } else {
             // Not Done yet
             if (!nextFound) {
@@ -290,7 +276,7 @@
           teamSelect.value = firstAvailable;
           handleTeamChange(); // load it
         } else if (assignedTeamsList.length > 0) {
-          // All done? Select the last one maybe, or just stay
+          // All done? Select the last one maybe
           teamSelect.value = assignedTeamsList[assignedTeamsList.length - 1].team_code;
           handleTeamChange();
           showAlert("🎉 All assigned teams completed!", "success");
@@ -318,11 +304,24 @@
 
         formDiv.innerHTML = "<p>Loading...</p>";
 
-        // Use cached scores instead of fetching again (Optimization!)
+        // Determine Category
+        // We look up the team object in assignedTeamsList
+        const teamObj = assignedTeamsList.find(t => t.team_code === team_code);
+        let activeCriteria = CRITERIA_IM; // fallback
+        if (teamObj) {
+          const cat = (teamObj.category || "").toLowerCase();
+          if (cat.includes("inno-tech") || cat.includes("tech-hackathon")) {
+            activeCriteria = CRITERIA_IT;
+          } else {
+            activeCriteria = CRITERIA_IM;
+          }
+        }
+
+        // Use cached scores instead of fetching again
         const existingScores = myScoresCache[team_code] || {};
         const isDone = Object.keys(existingScores).length > 0;
 
-        renderScoringForm(existingScores);
+        renderScoringForm(activeCriteria, existingScores);
 
         if (isDone) {
           // Locked
@@ -335,7 +334,7 @@
         }
       }
 
-      function renderScoringForm(existingScores = {}) {
+      function renderScoringForm(criteriaList, existingScores = {}) {
         formDiv.innerHTML = criteriaList.map(c => `
         <label>
           ${c.criteria_name} (${c.criteria_code})
@@ -354,6 +353,10 @@
             slider.oninput = () => { disp.textContent = slider.value; };
           }
         });
+
+        // Save logic needs to know WHICH criteria to read. 
+        // We can attach the current list to the DOM or a global var.
+        window.currentCriteriaList = criteriaList;
       }
 
       function showAlert(message, type = "success") {
@@ -387,8 +390,12 @@
         const team_code = teamSelect.value;
         if (!team_code) return;
 
+        // Use the list we used to render
+        const listToSave = window.currentCriteriaList || [];
+        if (listToSave.length === 0) return;
+
         const scores = {};
-        criteriaList.forEach(c => {
+        listToSave.forEach(c => {
           scores[c.criteria_code] = parseFloat(document.getElementById(c.criteria_code)?.value) || 0;
         });
 
