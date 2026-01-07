@@ -642,42 +642,6 @@
               <label class="muted" for="judgeSelect">Judge Names</label>
               <select id="judgeSelect">
                 <option value="">— Select judge —</option>
-                <!-- Voting Status Panel -->
-                <div id="panelVoting" role="tabpanel" aria-labelledby="btnVoting" hidden>
-                  <div class="panel-header">
-                    <h2>Voting Status</h2>
-                    <button id="btnRefreshVoting" class="action-btn">🔄 Refresh</button>
-                  </div>
-                  <div class="voting-summary-cards">
-                    <div class="summary-card">
-                      <h3>Total Teams Voted</h3>
-                      <p id="totalVotesCount">Loading...</p>
-                    </div>
-                    <div class="summary-card">
-                      <h3>Participation Rate</h3>
-                      <p id="vote participationRate">Loading...</p>
-                    </div>
-                  </div>
-
-                  <div class="table-container">
-                    <table class="teams-table" id="votingTable">
-                      <thead>
-                        <tr>
-                          <th>Team Code</th>
-                          <th>Team Name</th>
-                          <th>Category</th>
-                          <th>Voted By (Team)</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody id="votingTableBody">
-                        <!-- Rows will be populated here -->
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <!-- Tier 1 Results Panel -->
               </select>
             </div>
           </div>
@@ -692,7 +656,8 @@
 
             <!-- MIDDLE: Buttons -->
             <div class="assign-nav">
-              <button class="nav-btn" onclick="showPanel('panelVoting')">Voting Results</button>
+              <button class="btnb" id="btnAdd">➡️ Add</button>
+              <button class="btnr" id="btnRemove">⬅️ Remove</button>
               <button type="button" id="btnSave" class="btnb">💾 Save</button>
             </div>
 
@@ -754,6 +719,46 @@
           </div>
 
           <div class="team-list"></div>
+        </section>
+
+        <!-- Voting Status Panel (Moved to top level) -->
+        <section id="panelVoting" class="panel card" role="tabpanel" aria-labelledby="btnVoting">
+          <div class="panel-header"
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>Voting Status</h2>
+            <button id="btnRefreshVoting" class="tbtn">🔄 Refresh</button>
+          </div>
+          <div class="voting-summary-cards" style="display: flex; gap: 20px; margin-bottom: 20px;">
+            <div class="summary-card"
+              style="padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; flex: 1;">
+              <h3 style="margin-top: 0; font-size: 14px; color: #64748b;">Total Teams Voted</h3>
+              <p id="totalVotesCount" style="font-size: 24px; font-weight: bold; margin: 5px 0 0; color: #0f172a;">
+                Loading...</p>
+            </div>
+            <div class="summary-card"
+              style="padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; flex: 1;">
+              <h3 style="margin-top: 0; font-size: 14px; color: #64748b;">Participation Rate</h3>
+              <p id="vote participationRate"
+                style="font-size: 24px; font-weight: bold; margin: 5px 0 0; color: #0f172a;">Loading...</p>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="teams-table" id="votingTable" style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background: #f1f5f9; text-align: left;">
+                  <th style="padding: 12px; border-bottom: 2px solid #e2e8f0;">Team Code</th>
+                  <th style="padding: 12px; border-bottom: 2px solid #e2e8f0;">Team Name</th>
+                  <th style="padding: 12px; border-bottom: 2px solid #e2e8f0;">Category</th>
+                  <th style="padding: 12px; border-bottom: 2px solid #e2e8f0;">Voted By (Team)</th>
+                  <th style="padding: 12px; border-bottom: 2px solid #e2e8f0;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="votingTableBody">
+                <!-- Rows will be populated here -->
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section>

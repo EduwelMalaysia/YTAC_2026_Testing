@@ -840,10 +840,8 @@
           const team_code = localStorage.getItem("team_code");
 
           if (team_code.startsWith("THP")) {
-            // Choice for Primary
-            const userChoice = confirm("Press OK for Block-Based 🧱, or Cancel for Text-Based 💻");
-            const targetPage = userChoice ? "blockbased.html" : "textbased.html";
-            window.location.href = targetPage;
+            // Primary -> Block-Based
+            window.location.href = "blockbased.html";
           } else {
             // Secondary -> Text-Based 
             window.location.href = "textbased.html";
