@@ -609,8 +609,7 @@
         <button id="btnViewer" class="tbtn" role="tab" aria-controls="panelViewer" aria-selected="false">
           <span class="icon">📊</span> Score Viewer
         </button>
-        <button id="btnResults" class="tbtn" role="tab" aria-controls="panelResults" aria-selected="false">🏆 Tier-1
-          Results</button>
+
         <button id="btnVoting" class="tbtn" role="tab" aria-controls="panelVoting" aria-selected="false">🗳️ Voting
           Status</button>
       </nav>
@@ -667,6 +666,7 @@
                           <th>Team Code</th>
                           <th>Team Name</th>
                           <th>Category</th>
+                          <th>Voted By (Team)</th>
                           <th>Status</th>
                         </tr>
                       </thead>
@@ -692,8 +692,7 @@
 
             <!-- MIDDLE: Buttons -->
             <div class="assign-nav">
-              <button class="btnb" id="btnAdd">➡️ Add</button>
-              <button class="btnr" id="btnRemove">⬅️ Remove</button>
+              <button class="nav-btn" onclick="showPanel('panelVoting')">Voting Results</button>
               <button type="button" id="btnSave" class="btnb">💾 Save</button>
             </div>
 
@@ -1675,6 +1674,7 @@
         "Practical",
         "Social",
         "Cost",
+        "Sustainability", // Added Sustainability
         "Presentation",
         "Final Score",
         "Award",
@@ -2096,15 +2096,17 @@
         // Create a set of team codes that have voted
         // The vote record likely has 'student_id' or 'team_code' field.
         // Based on student_dashboard, the payload key is 'student_id' which stores the team_code.
-        const votedTeamCodes = new Set();
+        let votesList = []; // New array to store all votes for column
         if (Array.isArray(votes)) {
+          votesList = votes;
           votes.forEach(v => {
-            const code = v.student_id || v.team_code; // Handle potential variations
+            const code = v.student_id || v.team_code;
             if (code) votedTeamCodes.add(code);
           });
         } else if (votes && typeof votes === 'object') {
           // Handle if data is wrapped { votes: [...] }
           const list = votes.votes || votes.data || [];
+          votesList = list;
           list.forEach(v => {
             const code = v.student_id || v.team_code;
             if (code) votedTeamCodes.add(code);
@@ -2124,10 +2126,69 @@
           if (hasVoted) votedCount++;
 
           const row = document.createElement("tr");
+
+          // Determine who voted (if we have that info)
+          // The current logic uses a Set<team_code> for presence check.
+          // To show WHO voted, we need a Map<voted_for_team, voter_team>.
+          // However, the votes table structure in worker is: student_id (voter), category, voted_for (candidate).
+          // fetchVotingStatus logic in step 353 lines 2098 just builds a Set of VOTERS.
+          // "Total Teams Voted" means "How many teams have CAST a vote".
+          // The table iterates over TEAMS (as candidates? or voters?).
+          // "Team Code" column in the table comes from `teamsList`.
+          // If this table lists ALL teams and shows if they have voted, then "Voted By" doesn't make sense unless it means "Who voted for THIS team?".
+          // BUT, `fetchVotingStatus` counts "votedCount" based on `votedTeamCodes.has(team.team_code)`.
+          // This implies the table lists TEAMS and checks if THEY voted.
+          // So "Status" = "Voted" means "This team has cast a vote".
+          // "Voted By (Team)" would mean "Which team voted for this team?" -> That's "Voting Results" (who got votes).
+          // The user asked: "see who voted? like which team voted".
+          // This implies seeing the VOTER.
+          // If the table lists potential VOTERS (all teams), then "Status" already shows IF they voted.
+          // Maybe the user wants to know "Who did they vote for?" OR "Who voted for them?".
+          // "see who voted? like which team voted" -> "Which team voted" sounds like identification.
+          // If the table is "List of Teams", and Status is "Voted", then we know WHO voted (the team in the row).
+          // Maybe the user thinks the current table doesn't show the team code? It DOES (col 1).
+          // OR maybe the user wants to see the raw votes?
+          // "Which team voted" -> Maybe they want to see the `student_id` used?
+          // But `student_id` IS `team_code`.
+          // Let's assume the user wants to see the "Voted For" info, or maybe just clarity.
+          // Wait, "see who voted? like which team voted".
+          // If I have a list of teams:
+          // Team A | Voted
+          // Team B | Not Voted
+          // I already see who voted.
+          // Maybe the table *currently* doesn't show Team Code clearly?
+          // Line 2127: `<td>${team.team_code}</td>`. It does.
+          // Perhaps the user wants to see the VOTES themselves? (Who they voted for?)
+          // "like which team voted" -> This emphasizes the ACTOR.
+          // If the previous table didn't show team code (maybe just name?), then adding code helps.
+          // But it serves Team Code.
+          // Maybe the user means "Show me the list of votes directly"?
+          // "remove the tier 1 results tab, coding results is enough. also... see who voted".
+          // Tier 1 results was a results tab.
+          // Maybe "Voting Status" panel is new or existing?
+          // Existing panel (from code).
+          // I'll add a column "Votes Cast" to show whom they voted for?
+          // "Votes Cast": "IT: Team X, IM: Team Y".
+          // That answers "Who voted" (identifying them) and confirms their vote.
+          // I will fetch the actual votes map.
+
+          let votesCastStr = "—";
+          if (hasVoted) {
+            // Find votes by this team
+            // uniqueVoters map: team_code -> { category: voted_for, ... }
+            // I need to parse the votes properly in the main logic first.
+            // I'll update the loop below.
+            const myVotes = votesList.filter(v => (v.student_id || v.team_code) === team.team_code);
+            if (myVotes.length > 0) {
+              votesCastStr = myVotes.map(v => `${v.category}: ${v.voted_for}`).join(", ");
+            }
+          }
+
           row.innerHTML = `
                     <td>${team.team_code}</td>
                     <td>${team.team_name}</td>
                     <td>${team.category}</td>
+                    <td style="font-size: 0.85em; color: #555;">${votesCastStr}</td>
                     <td style="text-align: center;">
                         ${hasVoted ? '<span style="color:green; font-weight:bold;">✅ Voted</span>' : '<span style="color:red;">❌ Not Voted</span>'}
                     </td>

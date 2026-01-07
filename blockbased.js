@@ -628,32 +628,7 @@ btnSubmit.addEventListener('click', () => {
     }
 });
 
-btnRestart.addEventListener('click', () => {
-    // Restart logic might need to be removed or restricted if it's a strict competition.
-    // User didn't explicitly say remove restart, but "once submit... can't click anymore" implies persistence.
-    // But "Restart Challenge" on completion screen might be for a new user?
-    // Let's keep it but it resets everything including user.
-    // Restart logic might need to be removed or restricted if it's a strict competition.
-    // User didn't explicitly say remove restart, but "once submit... can't click anymore" implies persistence.
-    // But "Restart Challenge" on completion screen might be for a new user?
-    // Let's keep it but it resets everything including user.
-    showModal("Restart Challenge", "Restarting will clear all progress. Are you sure?", () => {
-        completionScreen.style.display = 'none';
-        startScreen.style.display = 'flex';
-        currentQuestion = 0;
-        completedQuestions.clear();
-        questionScores = {};
-        currentOutput = "";
-        hasRunCode = false;
-        currentMatchPercentage = 0;
-        isCorrect = false;
-        currentTestCase = null;
-        timerDisplay.textContent = "Time: 00:00:00";
-        usernameInput.value = "";
-        currentUser = "";
-        initQuestionList();
-    });
-});
+
 
 // Listen for messages from iframe
 window.addEventListener('message', function (e) {
