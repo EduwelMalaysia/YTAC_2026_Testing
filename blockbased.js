@@ -395,33 +395,51 @@ async function endCompetition() {
     // 2️⃣ Show completion screen
     stopTimer();
     completionScreen.style.display = 'flex';
-    // document.getElementById('finalTime').textContent = `Final Time: ${getFinalTime()} `;
+    document.getElementById('finalTime').textContent = `Final Time: ${getFinalTime()} `;
 
-    // // 3️⃣ Calculate total score
-    // const totalScore = Object.values(questionScores).reduce((sum, score) => sum + score, 0);
-    // const averageScore = completedQuestions.size > 0 ? Math.floor(totalScore / completedQuestions.size) : 0;
+    // 3️⃣ Calculate total score
+    const totalScore = Object.values(questionScores).reduce((sum, score) => sum + score, 0);
+    const averageScore = completedQuestions.size > 0 ? Math.floor(totalScore / completedQuestions.size) : 0;
 
-    // // 4️⃣ Update completion message
-    // document.getElementById('completionMessage').textContent = `You've completed ${completedQuestions.size} challenges with an Average Score of ${averageScore}%!`;
+    // 4️⃣ Update completion message
+    document.getElementById('completionMessage').textContent = `You've completed ${completedQuestions.size} challenges with an Average Score of ${averageScore}%!`;
 
-    // // 5️⃣ Export results
-    // const results = {
-    //     username: currentUser,
-    //     totalTime: getFinalTime(),
-    //     questionsAttempted: completedQuestions.size,
-    //     totalScore: totalScore,
-    //     detailedScores: questionScores,
-    //     solvedQuestions: Array.from(completedQuestions).map(idx => ({
-    //         id: challenges[idx].id,
-    //         title: challenges[idx].title,
-    //         score: questionScores[idx] || 0
-    //     }))
-    // };
+    // 5️⃣ Export & Save results
+    const results = {
+        team_code: localStorage.getItem("team_code"),
+        username: currentUser,
+        totalTime: getFinalTime(),
+        questionsAttempted: completedQuestions.size,
+        totalScore: totalScore,
+        detailedScores: questionScores,
+        solvedQuestions: Array.from(completedQuestions).map(idx => ({
+            id: challenges[idx].id,
+            title: challenges[idx].title,
+            score: questionScores[idx] || 0
+        }))
+    };
 
-    // const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
-    // const downloadAnchorNode = document.createElement('a');
-    // downloadAnchorNode.setAttribute("href", dataStr);
-    // downloadAnchorNode.setAttribute("download", `results_${currentUser}.json`);
+    // Save to backend
+    try {
+        await fetch(`${API}/tier1-results`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                team_code: results.team_code,
+                total_score: results.totalScore,
+                total_time: results.totalTime,
+                questions_attempted: results.questionsAttempted,
+                detailed_results: results
+            })
+        });
+    } catch (err) {
+        console.error("Failed to save results to backend:", err);
+    }
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `results_${currentUser}.json`);
     document.body.appendChild(downloadAnchorNode); // required for firefox
     downloadAnchorNode.click();
     downloadAnchorNode.remove();

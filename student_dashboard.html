@@ -580,6 +580,14 @@
           </div>
           <button class="tbtn" id="Battle" style="width: 100%; padding: 20px; font-size: 20px;">⚔️ Battle (Start
             Hackathon)</button>
+
+          <div style="margin-top: 20px; text-align: center;">
+            <p style="font-weight: 600; margin-bottom: 8px;">Press the File Submission button when you finished
+              attempting every question you can.</p>
+            <button class="tbtn" id="btnFileSubmission"
+              style="width: 100%; padding: 20px; font-size: 20px; background-color: #f59e0b; color: white;">File
+              Submission (For Block-Based)</button>
+          </div>
         </div>
 
       </div>
@@ -706,6 +714,17 @@
             const data = JSON.parse(text);
             statusEl.textContent = "Votes submitted successfully ✅";
 
+            // Mark as voted locally
+            localStorage.setItem(`hasVoted_${team_code}`, "true");
+
+            // Update UI to reflect voted state immediately
+            setTimeout(() => {
+              const voteContainer = document.getElementById("voteContainer");
+              voteContainer.innerHTML = "<div class='blank'><h3>✅ You have already voted!</h3><p>Thank you for participating.</p></div>";
+              document.getElementById("voteSubmit").style.display = "none";
+              statusEl.textContent = "";
+            }, 1500);
+
           } catch (err) {
             console.error(err);
             statusEl.textContent = "Error submitting votes: " + err.message;
@@ -722,15 +741,37 @@
           }
 
           // Determine View
-          const hackathonPrefixes = ["THP", "THS", "TH2B", "TH2T"];
+          const hackathonPrefixes = ["THP", "THS"];
           const isHackathon = hackathonPrefixes.some(p => team_code.startsWith(p));
 
           if (isHackathon) {
             document.getElementById("hackathonView").style.display = "block";
+
+            // Only show File Submission for THP (Primary) as they might be Block-Based
+            if (!team_code.startsWith("THP")) {
+              const fsBtn = document.getElementById("btnFileSubmission");
+              if (fsBtn) fsBtn.parentElement.style.display = "none";
+            }
+
             startCountdown();
           } else {
             document.getElementById("innoView").style.display = "block";
-            categories.forEach(cat => loadTeamsForCategory(cat));
+
+            // Check if already voted
+            const hasVoted = localStorage.getItem(`hasVoted_${team_code}`);
+            if (hasVoted === "true") {
+              const voteContainer = document.getElementById("voteContainer");
+              voteContainer.innerHTML = "<div class='blank'><h3>✅ You have already voted!</h3><p>Thank you for participating.</p></div>";
+              const submitBtn = document.getElementById("voteSubmit");
+              if (submitBtn) submitBtn.style.display = "none";
+            } else {
+              // Filter out Hackathon voting for IM and IT students
+              let catsToDisplay = categories;
+              if (team_code.startsWith("IM") || team_code.startsWith("IT")) {
+                catsToDisplay = categories.filter(c => !c.includes("Tech-Hackathon"));
+              }
+              catsToDisplay.forEach(cat => loadTeamsForCategory(cat));
+            }
           }
 
           try {
@@ -793,11 +834,26 @@
           if (localStorage.getItem("sessionEnded") === "true") {
             alert("You have already completed your session. You cannot start again.");
             window.location.href = "student_dashboard.html";
-          } else {
-            const team_code = localStorage.getItem("team_code");
-            const isBlockBased = team_code && team_code.startsWith("TH2B");
-            const targetPage = isBlockBased ? "blockbased.html" : "textbased.html";
+            return;
+          }
+
+          const team_code = localStorage.getItem("team_code");
+
+          if (team_code.startsWith("THP")) {
+            // Choice for Primary
+            const userChoice = confirm("Press OK for Block-Based 🧱, or Cancel for Text-Based 💻");
+            const targetPage = userChoice ? "blockbased.html" : "textbased.html";
             window.location.href = targetPage;
+          } else {
+            // Secondary -> Text-Based 
+            window.location.href = "textbased.html";
+          }
+        });
+
+        document.getElementById("btnFileSubmission").addEventListener("click", () => {
+          const confirmed = confirm("Are you finished attempting each question? If not, finish them first and submit them all at once.");
+          if (confirmed) {
+            window.open("https://forms.gle/your-google-form-url", "_blank"); // Placeholder URL as requested
           }
         });
 

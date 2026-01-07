@@ -120,7 +120,7 @@
           document.getElementById("password").value = ""; // clear password on fail
         } else if (data.type === "judge") {
           // users table only has username
-          localStorage.setItem("judge_username", data.user.username);
+          localStorage.setItem("judge_id", data.user.username);
           window.location.href = "dashboard.html";
         } else if (data.type === "student" || data.type === "team") {
           const user = data.user;

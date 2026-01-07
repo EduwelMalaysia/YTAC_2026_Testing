@@ -404,8 +404,9 @@ async function endCompetition() {
     // 4️⃣ Update completion message
     document.getElementById('completionMessage').textContent = `You've completed ${completedQuestions.size} challenges with an Average Score of ${averageScore}%!`;
 
-    // 5️⃣ Export results
+    // 5️⃣ Export & Save results
     const results = {
+        team_code: localStorage.getItem("team_code"),
         username: currentUser,
         totalTime: getFinalTime(),
         questionsAttempted: completedQuestions.size,
@@ -417,6 +418,23 @@ async function endCompetition() {
             score: questionScores[idx] || 0
         }))
     };
+
+    // Save to backend
+    try {
+        await fetch(`${API}/tier1-results`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                team_code: results.team_code,
+                total_score: results.totalScore,
+                total_time: results.totalTime,
+                questions_attempted: results.questionsAttempted,
+                detailed_results: results
+            })
+        });
+    } catch (err) {
+        console.error("Failed to save results to backend:", err);
+    }
 
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
     const downloadAnchorNode = document.createElement('a');

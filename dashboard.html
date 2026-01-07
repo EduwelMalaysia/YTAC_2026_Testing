@@ -1,22 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Judging Dashboard</title>
   <style>
-    body { font-family:"Segoe UI",Arial; background:#f4f6fa; margin:0; color:#333; }
-    header { background:#004aad; color:white; padding:15px 25px; display:flex; justify-content:space-between; align-items:center; }
-    main { max-width:900px; margin:30px auto; background:white; padding:30px; border-radius:12px; box-shadow:0 5px 15px rgba(0,0,0,0.1); }
-    h2 { color:#fff; margin:0; }
-    label { display:block; margin-top:15px; font-weight:500; }
-    select,input[type=range]{width:100%; padding:8px; border:1px solid #ccc; border-radius:8px; font-size:15px; margin-top:5px;}
-    button{margin-top:20px; background:#007bff; color:white; border:none; border-radius:8px; padding:12px 20px; font-weight:600; cursor:pointer;}
-    button:hover{background:#005fcc;}
-    .score-display{background:#007bff; color:white; border-radius:50%; display:inline-block; width:35px; height:35px; line-height:35px; text-align:center; margin-left:10px;}
-    .alert{background:#e8f9f0; padding:10px 15px; border-left:4px solid #28a745; border-radius:8px; margin-bottom:10px; color:#2d7a46;}
+    body {
+      font-family: "Segoe UI", Arial;
+      background: #f4f6fa;
+      margin: 0;
+      color: #333;
+    }
+
+    header {
+      background: #004aad;
+      color: white;
+      padding: 15px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 30px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      color: #fff;
+      margin: 0;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+
+    select,
+    input[type=range] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 15px;
+      margin-top: 5px;
+    }
+
+    button {
+      margin-top: 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #005fcc;
+    }
+
+    .score-display {
+      background: #007bff;
+      color: white;
+      border-radius: 50%;
+      display: inline-block;
+      width: 35px;
+      height: 35px;
+      line-height: 35px;
+      text-align: center;
+      margin-left: 10px;
+    }
+
+    .alert {
+      background: #e8f9f0;
+      padding: 10px 15px;
+      border-left: 4px solid #28a745;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      color: #2d7a46;
+    }
   </style>
 </head>
+
 <body>
   <header>
     <h2>Judging Dashboard</h2>
@@ -68,14 +141,44 @@
 
     let criteriaList = [];
 
+    const DEFAULT_CRITERIA = [
+      { criteria_code: "creativity", criteria_name: "Creativity" },
+      { criteria_code: "practical", criteria_name: "Practicality" },
+      { criteria_code: "social", criteria_name: "Social Impact" },
+      { criteria_code: "cost", criteria_name: "Cost" },
+      { criteria_code: "presentation", criteria_name: "Presentation" }
+    ];
+
     // ===== INIT =====
     async function init() {
       try {
-        const critRes = await fetch(API + "/criteria");
-        criteriaList = await critRes.json();
+        // Try fetching from server, but fallback if fails/empty
+        try {
+          const critRes = await fetch(API + "/criteria");
+          if (!critRes.ok) throw new Error("Criteria endpoint failed");
+          const data = await critRes.json();
+          console.log("Fetched criteria raw data:", data); // 🔍 DEBUG
+
+          if (Array.isArray(data) && data.length > 0) {
+            // Normalize keys just in case
+            criteriaList = data.map(item => {
+              const code = item.criteria_code || item.code || item.id || (item.criteria_name ? item.criteria_name.toLowerCase() : "") || (item.name ? item.name.toLowerCase() : "");
+              const name = item.criteria_name || item.name || item.criteria_code || "Unknown Criteria";
+              return { criteria_code: code, criteria_name: name };
+            });
+            console.log("Normalized criteriaList:", criteriaList);
+          } else {
+            throw new Error("Empty criteria list");
+          }
+        } catch (e) {
+          console.warn("Using default criteria because:", e);
+          criteriaList = DEFAULT_CRITERIA;
+        }
 
         // 🔍 DEBUG: Log the exact URL
-        const teamsUrl = `${API}/assigned-teams?judge_id=${judge_id}`;
+        // Fix: Force uppercase for judge_id as DB stores it as J001 (uppercase) while login returns j001 (lowercase)
+        const effectiveJudgeId = judge_id.toUpperCase();
+        const teamsUrl = `${API}/assigned-teams?judge_id=${effectiveJudgeId}`;
         console.log("Fetching from:", teamsUrl);
 
         const teamsRes = await fetch(teamsUrl);
@@ -84,12 +187,14 @@
         const assignedTeams = await teamsRes.json();
         console.log("Assigned teams:", assignedTeams); // Should be [ { team_code: "FE-001", ... } ]
 
-        assignedTeams.forEach(t => {
-          const opt = document.createElement("option");
-          opt.value = t.team_code;
-          opt.textContent = `${t.team_code} - ${t.team_name}`;
-          teamSelect.appendChild(opt);
-        });
+        if (Array.isArray(assignedTeams)) {
+          assignedTeams.forEach(t => {
+            const opt = document.createElement("option");
+            opt.value = t.team_code;
+            opt.textContent = `${t.team_code} - ${t.team_name}`;
+            teamSelect.appendChild(opt);
+          });
+        }
 
         teamSelect.addEventListener("change", handleTeamChange);
       } catch (err) {
@@ -206,4 +311,5 @@
     init();
   </script>
 </body>
+
 </html>

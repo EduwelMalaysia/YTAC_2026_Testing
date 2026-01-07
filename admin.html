@@ -702,6 +702,12 @@
               <option value="Tech-Hackathon Primary">Tech-Hackathon Primary</option>
               <option value="Tech-Hackathon Secondary">Tech-Hackathon Secondary</option>
             </select>
+
+            <label class="muted" for="viewer-type" style="margin-left: 20px;">Result Type</label>
+            <select id="viewer-type">
+              <option value="presentation">Presentation Scores</option>
+              <option value="coding">Coding Results</option>
+            </select>
             <div class="spacer"></div>
             <button class="btnr">⬇️ Export CSV</button>
           </div>
@@ -1087,23 +1093,110 @@
     const exportBtn = document.querySelector('#panelViewer .btnr');
 
     let allTeams = [];
+    let cachedContestResults = []; // Cache the results so they persist
 
     async function fetchTeams() {
+      console.log("🔄 fetchTeams called");
       try {
-        const res = await fetch(`${API}/teams`);
-        if (!res.ok) throw new Error('Failed to load teams');
-        allTeams = await res.json();
+        const [teamsRes, resultsRes] = await Promise.all([
+          fetch(`${API}/teams`),
+          fetch(`${API}/tier1-results`).catch(() => null)
+        ]);
+
+        if (!teamsRes.ok) throw new Error('Failed to load teams');
+
+        // Helper to safely parse JSON or return empty/null
+        const safeJson = async (res) => {
+          if (!res || !res.ok) return null;
+          const text = await res.text();
+          try {
+            return JSON.parse(text);
+          } catch (e) {
+            console.warn("Response was not JSON:", text);
+            return null;
+          }
+        };
+
+        allTeams = await safeJson(teamsRes) || [];
+        let contestResultsRaw = await safeJson(resultsRes);
+
+        // Handle different response formats (D1 returns {results: [...]} or direct array)
+        let contestResults = [];
+        if (contestResultsRaw) {
+          if (Array.isArray(contestResultsRaw)) {
+            contestResults = contestResultsRaw;
+          } else if (contestResultsRaw.results && Array.isArray(contestResultsRaw.results)) {
+            contestResults = contestResultsRaw.results;
+          } else if (contestResultsRaw.data && Array.isArray(contestResultsRaw.data)) {
+            contestResults = contestResultsRaw.data;
+          }
+        }
+
+        // Cache the results globally
+        cachedContestResults = contestResults;
+
+        if (contestResults.length === 0) {
+          console.warn("⚠️ No coding results found. The /tier1-results endpoint may not be returning data correctly.");
+          console.warn("💡 Make sure your backend has a GET handler for /tier1-results that returns the saved results.");
+        } else {
+          console.log("📊 Fetched coding results:", contestResults);
+        }
+
+        // Merge scores into allTeams
+        mergeScoresIntoTeams();
+
         renderTeams(allTeams);
       } catch (err) {
         console.error(err);
-        viewerteamListContainer.innerHTML = `<p class="error">❌ Failed to load teams.</p>`;
+        viewerteamListContainer.innerHTML = `<p class="error">❌ Failed to load teams: ${err.message}</p>`;
       }
+    }
+
+    // Helper function to merge contest scores into allTeams
+    function mergeScoresIntoTeams() {
+      const resultsMap = {};
+      cachedContestResults.forEach(r => {
+        if (r && r.team_code) {
+          // Keep the best score for each team
+          if (!resultsMap[r.team_code] || r.total_score > resultsMap[r.team_code].total_score) {
+            resultsMap[r.team_code] = r;
+          }
+        }
+      });
+
+      console.log("📊 Results map:", resultsMap);
+
+      // Merge results into allTeams
+      allTeams.forEach(team => {
+        if (resultsMap[team.team_code]) {
+          team.contest_score = resultsMap[team.team_code].total_score;
+          team.contest_time = resultsMap[team.team_code].total_time;
+          console.log(`✅ Merged score for ${team.team_code}:`, team.contest_score);
+        } else {
+          team.contest_score = null;
+        }
+      });
+
+      console.log("📊 Teams with scores:", allTeams.map(t => ({
+        code: t.team_code,
+        score: t.contest_score,
+        time: t.contest_time
+      })));
     }
     function renderTeams(teams) {
       if (!teams || teams.length === 0) {
         viewerteamListContainer.innerHTML = '<p class="empty">No teams found.</p>';
         return;
       }
+
+      const viewType = document.getElementById('viewer-type')?.value || 'presentation';
+
+      console.log("🎨 renderTeams called with viewType:", viewType);
+      console.log("🎨 Teams received:", teams.map(t => ({
+        code: t.team_code,
+        score: t.contest_score,
+        time: t.contest_time
+      })));
 
       const awardOptions = [
         "", // empty = no award
@@ -1145,43 +1238,75 @@
           </select>
         `;
 
-        return `
-          <tr data-team-code="${team.team_code}">
-            <td>${team.team_code || '—'}</td>
-            <td>${team.team_name || '—'}</td>
-            <td>${team.category || '—'}</td>
-            <td><div style="font-size: 11px; white-space: pre-wrap; max-width: 150px;">${team.student_names || '—'}</div></td>
-            <td>${(team.final_creativity != null) ? team.final_creativity.toFixed(2) : '—'}</td>
-            <td>${(team.final_practical != null) ? team.final_practical.toFixed(2) : '—'}</td>
-            <td>${(team.final_social != null) ? team.final_social.toFixed(2) : '—'}</td>
-            <td>${(team.final_cost != null) ? team.final_cost.toFixed(2) : '—'}</td>
-            <td>${(team.final_presentation != null) ? team.final_presentation.toFixed(2) : '—'}</td>
-            <td><strong>${(team.final_score != null) ? team.final_score.toFixed(2) : '—'}</strong></td>
-            <td>${awardSelect}</td>
-            <td>${gradeSelect}</td>
-          </tr>
-        `;
+        if (viewType === 'coding') {
+          return `
+            <tr data-team-code="${team.team_code}">
+              <td>${team.team_code || '—'}</td>
+              <td>${team.team_name || '—'}</td>
+              <td>${team.category || '—'}</td>
+              <td><div style="font-size: 11px; white-space: pre-wrap; max-width: 150px;">${team.student_names || '—'}</div></td>
+              <td style="background: #fdf2f2; font-weight: bold; color: #991b1b;">${(team.contest_score != null) ? team.contest_score + '%' : '—'}</td>
+              <td>${team.contest_time || '—'}</td>
+            </tr>
+          `;
+        } else {
+          // presentation view
+          return `
+            <tr data-team-code="${team.team_code}">
+              <td>${team.team_code || '—'}</td>
+              <td>${team.team_name || '—'}</td>
+              <td>${team.category || '—'}</td>
+              <td><div style="font-size: 11px; white-space: pre-wrap; max-width: 150px;">${team.student_names || '—'}</div></td>
+              <td>${(team.final_creativity != null) ? team.final_creativity.toFixed(2) : '—'}</td>
+              <td>${(team.final_practical != null) ? team.final_practical.toFixed(2) : '—'}</td>
+              <td>${(team.final_social != null) ? team.final_social.toFixed(2) : '—'}</td>
+              <td>${(team.final_cost != null) ? team.final_cost.toFixed(2) : '—'}</td>
+              <td>${(team.final_presentation != null) ? team.final_presentation.toFixed(2) : '—'}</td>
+              <td><strong>${(team.final_score != null) ? team.final_score.toFixed(2) : '—'}</strong></td>
+              <td>${awardSelect}</td>
+              <td>${gradeSelect}</td>
+            </tr>
+          `;
+        }
       }).join('');
+
+      let header;
+      if (viewType === 'coding') {
+        header = `
+          <thead>
+            <tr>
+              <th>Team Code</th>
+              <th>Team Name</th>
+              <th>Category</th>
+              <th>Students</th>
+              <th style="background: #fef2f2;">Coding Score</th>
+              <th>Time Taken</th>
+            </tr>
+          </thead>`;
+      } else {
+        header = `
+          <thead>
+            <tr>
+              <th>Team Code</th>
+              <th>Team Name</th>
+              <th>Category</th>
+              <th>Students</th>
+              <th>Creativity</th>
+              <th>Practical</th>
+              <th>Social</th>
+              <th>Cost</th>
+              <th>Presentation</th>
+              <th>Final Score</th>
+              <th>Award</th>
+              <th>Grade</th>
+            </tr>
+          </thead>`;
+      }
 
       viewerteamListContainer.innerHTML = `
         <div style="overflow-x: auto;">
           <table class="teams-table">
-            <thead>
-              <tr>
-                <th>Team Code</th>
-                <th>Team Name</th>
-                <th>Category</th>
-                <th>Students</th>
-                <th>Creativity</th>
-                <th>Practical</th>
-                <th>Social</th>
-                <th>Cost</th>
-                <th>Presentation</th>
-                <th>Final Score</th>
-                <th>Award</th>
-                <th>Grade</th>
-              </tr>
-            </thead>
+            ${header}
             <tbody>
               ${rows}
             </tbody>
@@ -1200,16 +1325,35 @@
     } // This closes the renderTeams function
 
     viewerCategorySelect?.addEventListener('change', () => {
-      const selectedCategory = viewerCategorySelect.value;
-      if (!selectedCategory) {
-        renderTeams(allTeams);
-      } else {
-        const filtered = allTeams.filter(team =>
-          team.category === selectedCategory
-        );
-        renderTeams(filtered);
-      }
+      renderCurrentView();
     });
+
+    document.getElementById('viewer-type')?.addEventListener('change', () => {
+      renderCurrentView();
+    });
+
+    function renderCurrentView() {
+      const selectedCategory = viewerCategorySelect.value;
+      const viewType = document.getElementById('viewer-type')?.value || 'presentation';
+
+      // Always re-merge scores to ensure they persist
+      mergeScoresIntoTeams();
+
+      console.log("🔍 renderCurrentView - allTeams before filter:", allTeams.find(t => t.team_code === 'THP-001'));
+
+      let filtered = selectedCategory
+        ? allTeams.filter(team => team.category === selectedCategory)
+        : allTeams;
+
+      // Coding results are only for Tech-Hackathon (TH) peeps
+      if (viewType === 'coding') {
+        filtered = filtered.filter(team => (team.category || '').startsWith("Tech-Hackathon"));
+      }
+
+      console.log("🔍 renderCurrentView - filtered result:", filtered.find(t => t.team_code === 'THP-001'));
+
+      renderTeams(filtered);
+    }
 
     // Save award
     async function handleAwardChange(e) {
@@ -1253,13 +1397,31 @@
     }
 
     exportBtn?.addEventListener('click', () => {
-      if (!allTeams || allTeams.length === 0) {
+      const selectedCategory = viewerCategorySelect.value;
+      const viewType = document.getElementById('viewer-type')?.value || 'presentation';
+      const isCoding = viewType === 'coding';
+
+      let teamsToExport = selectedCategory
+        ? allTeams.filter(team => team.category === selectedCategory)
+        : allTeams;
+
+      if (isCoding) {
+        teamsToExport = teamsToExport.filter(team => (team.category || '').startsWith("Tech-Hackathon"));
+      }
+
+      if (!teamsToExport || teamsToExport.length === 0) {
         alert("No teams to export.");
         return;
       }
 
       // Define columns in order
-      const headers = [
+      const headers = isCoding ? [
+        "Team Code",
+        "Team Name",
+        "Category",
+        "Coding Score",
+        "Time Taken"
+      ] : [
         "Team Code",
         "Team Name",
         "Category",
@@ -1274,20 +1436,30 @@
       ];
 
       // Build CSV rows
-      const rows = allTeams.map(team => {
-        return [
-          `"${(team.team_code || '').replace(/"/g, '""')}"`,
-          `"${(team.team_name || '').replace(/"/g, '""')}"`,
-          `"${(team.category || '').replace(/"/g, '""')}"`,
-          team.final_creativity != null ? team.final_creativity.toFixed(2) : "",
-          team.final_practical != null ? team.final_practical.toFixed(2) : "",
-          team.final_social != null ? team.final_social.toFixed(2) : "",
-          team.final_cost != null ? team.final_cost.toFixed(2) : "",
-          team.final_presentation != null ? team.final_presentation.toFixed(2) : "",
-          team.final_score != null ? team.final_score.toFixed(2) : "",
-          `"${(team.award || '').replace(/"/g, '""')}"`,
-          `"${(team.grade || '').replace(/"/g, '""')}"`,
-        ].join(",");
+      const rows = teamsToExport.map(team => {
+        if (isCoding) {
+          return [
+            `"${(team.team_code || '').replace(/"/g, '""')}"`,
+            `"${(team.team_name || '').replace(/"/g, '""')}"`,
+            `"${(team.category || '').replace(/"/g, '""')}"`,
+            team.contest_score != null ? team.contest_score + "%" : "—",
+            `"${(team.contest_time || '').replace(/"/g, '""')}"`
+          ].join(",");
+        } else {
+          return [
+            `"${(team.team_code || '').replace(/"/g, '""')}"`,
+            `"${(team.team_name || '').replace(/"/g, '""')}"`,
+            `"${(team.category || '').replace(/"/g, '""')}"`,
+            team.final_creativity != null ? team.final_creativity.toFixed(2) : "",
+            team.final_practical != null ? team.final_practical.toFixed(2) : "",
+            team.final_social != null ? team.final_social.toFixed(2) : "",
+            team.final_cost != null ? team.final_cost.toFixed(2) : "",
+            team.final_presentation != null ? team.final_presentation.toFixed(2) : "",
+            team.final_score != null ? team.final_score.toFixed(2) : "",
+            `"${(team.award || '').replace(/"/g, '""')}"`,
+            `"${(team.grade || '').replace(/"/g, '""')}"`,
+          ].join(",");
+        }
       });
 
       const csvContent = [headers.join(","), ...rows].join("\n");
