@@ -121,6 +121,13 @@
             // Initialize questions with student category
             initQuestionList(data.category);
 
+            // Hide Blockly for non-primary students
+            const isPrimary = typeof data.category === 'string' && data.category.toLowerCase().includes('primary');
+            const blocklyOption = languageSelect.querySelector('option[value="blockly"]');
+            if (!isPrimary && blocklyOption) {
+                blocklyOption.remove();
+            }
+
         } catch (err) {
             console.error("Session verification failed", err);
             // Fallback to all or secondary if fail? Let's just init without filter (shows all) or empty
