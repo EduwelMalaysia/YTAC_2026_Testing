@@ -43,10 +43,8 @@
             let inputRaw = q[`test_case_input_${i}`];
             let outputRaw = q[`test_case_output_${i}`];
 
-            // Improved check to allow empty strings but avoid null/undefined
             if (inputRaw != null && outputRaw != null) {
                 try {
-                    // Remove potential JSON wrapper if it was stored as stringified JSON
                     let cleanInput = inputRaw;
                     if (typeof inputRaw === 'string' && (inputRaw.startsWith('"') || inputRaw.startsWith('{'))) {
                         try { cleanInput = JSON.parse(inputRaw); } catch (e) { }
@@ -58,8 +56,10 @@
                     }
 
                     let finalStdin = "";
+                    let testCaseDesc = `Test Case ${i}`;
                     if (typeof cleanInput === 'object' && cleanInput !== null) {
                         finalStdin = cleanInput.raw || JSON.stringify(cleanInput);
+                        if (cleanInput.desc) testCaseDesc = cleanInput.desc;
                     } else {
                         finalStdin = String(cleanInput);
                     }
@@ -74,7 +74,7 @@
                     testCases.push({
                         stdin: finalStdin,
                         stdout: finalStdout,
-                        desc: `Test Case ${i}`
+                        desc: testCaseDesc
                     });
                 } catch (e) {
                     console.warn("Failed to parse test case", i, e);
@@ -183,6 +183,8 @@
     const modalMessage = document.getElementById('modalMessage');
     const btnModalCancel = document.getElementById('btnModalCancel');
     const btnModalConfirm = document.getElementById('btnModalConfirm');
+    const fileUpload = document.getElementById('fileUpload');
+    const finalSteps = document.getElementById('finalSteps');
 
     // Custom Modal Function
     function showModal(title, message, onConfirm, isConfirmation = true) {
@@ -404,6 +406,36 @@
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} `;
     }
 
+    // Download code file
+    function downloadCodeFile(questionId, code, language) {
+        const teamCode = localStorage.getItem("team_code") || "UNKNOWN";
+        const extensions = {
+            "python": "py", "javascript": "js", "java": "java", "c": "c", "cpp": "cpp",
+            "csharp": "cs", "nodejs": "js", "lua": "lua", "r": "r", "ruby": "rb", "php": "php", "blockly": "xml"
+        };
+        const ext = extensions[language] || "txt";
+        const filename = `${questionId}_${teamCode}.${ext}`;
+        const blob = new Blob([code], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // Read file as Base64
+    function readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        });
+    }
+
     // End Competition
     async function endCompetition() {
         // 1️⃣ End session in backend
@@ -431,6 +463,7 @@
         // 2️⃣ Show completion screen
         stopTimer();
         completionScreen.style.display = 'flex';
+        if (finalSteps) finalSteps.style.display = 'block';
         document.getElementById('finalTime').textContent = `Final Time: ${getFinalTime()} `;
 
         // 3️⃣ Calculate total score
@@ -534,7 +567,10 @@
         currentUser = username;
         currentLanguage = languageSelect.value;
         // Update iframe src with selected language
-        const newSrc = `https://onecompiler.com/embed/${currentLanguage}?listenToEvents=true&codeChangeEvent=true&hideResult=true&hideStdin=true&hideLanguageSelection=true&hideNew=true&hideRun=true&hideResult=true`;
+        let newSrc = `https://onecompiler.com/embed/${currentLanguage}?listenToEvents=true&codeChangeEvent=true&hideResult=true&hideStdin=true&hideLanguageSelection=true&hideNew=true&hideRun=true&hideResult=true`;
+        if (currentLanguage === 'blockly') {
+            newSrc = `https://block-coding-onecompiler.pages.dev/?listenToEvents=true&codeChangeEvent=true&hideResult=true&hideStdin=true&hideLanguageSelection=true&hideNew=true&hideRun=true&hideResult=true`;
+        }
 
         // Wait for iframe to load before starting
         iframe.onload = () => {
@@ -629,19 +665,59 @@
         runNextTestCase(currentCode);
     });
 
-    btnSubmit.addEventListener('click', () => {
+    btnSubmit.addEventListener('click', async () => {
         if (hasRunCode) {
             // Allow submission regardless of pass count
-            // Allow submission regardless of pass count
-            showModal("Submit Answer", "Are you sure you want to submit? You cannot redo this question.", () => {
+            showModal("Submit Answer", "Are you sure you want to submit? This will save your progress and download your code.", async () => {
                 const currentChallenge = challenges[currentQuestion];
 
                 // Calculate score for this question (percentage of passed test cases)
                 const score = Math.floor((passCount / currentChallenge.testCases.length) * 100);
-                questionScores[currentQuestion] = score;
 
+                // 1. Prepare submission data
+                let fileData = null;
+                let fileName = null;
+                if (fileUpload && fileUpload.files.length > 0) {
+                    const file = fileUpload.files[0];
+                    fileName = file.name;
+                    fileData = await readFileAsBase64(file);
+                }
+
+                const submission = {
+                    team_code: localStorage.getItem("team_code"),
+                    question_code: currentChallenge.id,
+                    score: score,
+                    code: currentCode,
+                    language: currentLanguage,
+                    attached_file_name: fileName,
+                    attached_file_data: fileData, // Base64
+                    pass_count: passCount,
+                    total_test_cases: currentChallenge.testCases.length
+                };
+
+                // 2. Save to backend
+                try {
+                    const res = await fetch(`${API}/submit-answer`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(submission)
+                    });
+                    const data = await res.json();
+                    if (!data.success) {
+                        console.error("Submission failed:", data.error);
+                    }
+                } catch (err) {
+                    console.error("Backend submission failed", err);
+                }
+
+                // 3. Trigger Download
+                downloadCodeFile(currentChallenge.id, currentCode, currentLanguage);
+
+                // 4. Update UI
+                questionScores[currentQuestion] = score;
                 completedQuestions.add(currentQuestion);
                 updateQuestionList(); // This will lock it
+                if (fileUpload) fileUpload.value = ""; // Clear file input
 
                 // Move to next available question
                 let nextQ = currentQuestion + 1;

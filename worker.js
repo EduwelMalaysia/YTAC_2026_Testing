@@ -42,7 +42,7 @@ var worker_default = {
 		});
 
 
-		// --- QUESTIONS: CREATE OR UPDATE (MANUAL UPSERT) ---
+		// --- QUESTIONS: CREATE OR UPDATE (DOUBLICATE ALLOWED) ---
 		if (url.pathname === "/questions" && method === "POST") {
 			try {
 				const data = await request.json();
@@ -50,94 +50,47 @@ var worker_default = {
 				let { category } = data;
 				if (!category) category = "secondary"; // Default
 
-				// 1. Check if question exists
-				const existing = await env2.DB.prepare("SELECT 1 FROM questions WHERE question_code = ?").bind(code).first();
+				// Unconditionally INSERT (Allows duplicate question_code)
+				const insertQuery = `
+          INSERT INTO questions
+          (
+            question_code, difficulty, question_title, problem_statement, category,
+            test_case_input_1,  test_case_output_1,
+            test_case_input_2,  test_case_output_2,
+            test_case_input_3,  test_case_output_3,
+            test_case_input_4,  test_case_output_4,
+            test_case_input_5,  test_case_output_5,
+            test_case_input_6,  test_case_output_6,
+            test_case_input_7,  test_case_output_7,
+            test_case_input_8,  test_case_output_8,
+            test_case_input_9,  test_case_output_9,
+            test_case_input_10, test_case_output_10
+          )
+          VALUES (
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+          )
+        `;
 
-				if (existing) {
-					// UPDATE
-					const updateQuery = `
-            UPDATE questions SET
-              difficulty = ?,
-              question_title = ?,
-              problem_statement = ?,
-              category = ?,
-              test_case_input_1 = ?, test_case_output_1 = ?,
-              test_case_input_2 = ?, test_case_output_2 = ?,
-              test_case_input_3 = ?, test_case_output_3 = ?,
-              test_case_input_4 = ?, test_case_output_4 = ?,
-              test_case_input_5 = ?, test_case_output_5 = ?,
-              test_case_input_6 = ?, test_case_output_6 = ?,
-              test_case_input_7 = ?, test_case_output_7 = ?,
-              test_case_input_8 = ?, test_case_output_8 = ?,
-              test_case_input_9 = ?, test_case_output_9 = ?,
-              test_case_input_10 = ?, test_case_output_10 = ?
-            WHERE question_code = ?
-          `;
+				const result = await env2.DB.prepare(insertQuery)
+					.bind(
+						code, difficulty, title, statement, category,
+						toJsonString(testCases[0].input), toJsonString(testCases[0].output),
+						toJsonString(testCases[1].input), toJsonString(testCases[1].output),
+						toJsonString(testCases[2].input), toJsonString(testCases[2].output),
+						toJsonString(testCases[3].input), toJsonString(testCases[3].output),
+						toJsonString(testCases[4].input), toJsonString(testCases[4].output),
+						toJsonString(testCases[5].input), toJsonString(testCases[5].output),
+						toJsonString(testCases[6].input), toJsonString(testCases[6].output),
+						toJsonString(testCases[7].input), toJsonString(testCases[7].output),
+						toJsonString(testCases[8].input), toJsonString(testCases[8].output),
+						toJsonString(testCases[9].input), toJsonString(testCases[9].output)
+					)
+					.run();
 
-					const result = await env2.DB.prepare(updateQuery)
-						.bind(
-							difficulty, title, statement, category,
-							toJsonString(testCases[0].input), toJsonString(testCases[0].output),
-							toJsonString(testCases[1].input), toJsonString(testCases[1].output),
-							toJsonString(testCases[2].input), toJsonString(testCases[2].output),
-							toJsonString(testCases[3].input), toJsonString(testCases[3].output),
-							toJsonString(testCases[4].input), toJsonString(testCases[4].output),
-							toJsonString(testCases[5].input), toJsonString(testCases[5].output),
-							toJsonString(testCases[6].input), toJsonString(testCases[6].output),
-							toJsonString(testCases[7].input), toJsonString(testCases[7].output),
-							toJsonString(testCases[8].input), toJsonString(testCases[8].output),
-							toJsonString(testCases[9].input), toJsonString(testCases[9].output),
-							code // WHERE clause
-						)
-						.run();
-
-					return jsonResponse({ success: true, updated: true });
-
-				} else {
-					// INSERT
-					const insertQuery = `
-            INSERT INTO questions
-            (
-              question_code, difficulty, question_title, problem_statement, category,
-              test_case_input_1,  test_case_output_1,
-              test_case_input_2,  test_case_output_2,
-              test_case_input_3,  test_case_output_3,
-              test_case_input_4,  test_case_output_4,
-              test_case_input_5,  test_case_output_5,
-              test_case_input_6,  test_case_output_6,
-              test_case_input_7,  test_case_output_7,
-              test_case_input_8,  test_case_output_8,
-              test_case_input_9,  test_case_output_9,
-              test_case_input_10, test_case_output_10
-            )
-            VALUES (
-              ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-            )
-          `;
-
-					const result = await env2.DB.prepare(insertQuery)
-						.bind(
-							code, difficulty, title, statement, category,
-							toJsonString(testCases[0].input), toJsonString(testCases[0].output),
-							toJsonString(testCases[1].input), toJsonString(testCases[1].output),
-							toJsonString(testCases[2].input), toJsonString(testCases[2].output),
-							toJsonString(testCases[3].input), toJsonString(testCases[3].output),
-							toJsonString(testCases[4].input), toJsonString(testCases[4].output),
-							toJsonString(testCases[5].input), toJsonString(testCases[5].output),
-							toJsonString(testCases[6].input), toJsonString(testCases[6].output),
-							toJsonString(testCases[7].input), toJsonString(testCases[7].output),
-							toJsonString(testCases[8].input), toJsonString(testCases[8].output),
-							toJsonString(testCases[9].input), toJsonString(testCases[9].output)
-						)
-						.run();
-
-					return jsonResponse({ success: true, id: result.lastRowId ?? null });
-				}
+				return jsonResponse({ success: true, id: result.lastRowId ?? result.meta?.last_row_id ?? null });
 
 			} catch (err) {
-				// If "no such column: category", user needs to migrate.
-				// We can fallback? No, let's return error so they know.
 				return jsonResponse({ success: false, error: String(err) }, 500);
 			}
 		}
@@ -582,6 +535,22 @@ var worker_default = {
       `).bind(student_id).run();
 
 			return jsonResponse({ success: true });
+		}
+
+		if (url.pathname === "/submit-answer" && method === "POST") {
+			try {
+				const submission = await request.json();
+				const { team_code, question_code, score, code, language, attached_file_name, attached_file_data } = submission;
+
+				await db.prepare(`
+					INSERT INTO question_submissions (team_code, question_code, score, code, language, attached_file_name, attached_file_data)
+					VALUES (?, ?, ?, ?, ?, ?, ?)
+				`).bind(team_code, question_code, score, code, language, attached_file_name, attached_file_data).run();
+
+				return jsonResponse({ success: true });
+			} catch (err) {
+				return jsonResponse({ success: false, error: String(err) }, 500);
+			}
 		}
 
 		if (url.pathname === '/tier1-results' && method === 'POST') {

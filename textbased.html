@@ -56,6 +56,12 @@
                                 <button id="btnSubmit" class="btn btn-warning" disabled>Submit Answer</button>
                             </div>
 
+                            <div class="file-upload-container mt-3 mb-2">
+                                <label for="fileUpload" class="form-label small mb-1">Optional: Attached Source File
+                                    (.py, .js, .xml etc)</label>
+                                <input type="file" id="fileUpload" class="form-control form-control-sm">
+                            </div>
+
                             <div class="output-matching">
                                 <div class="output-header">Output Result Matching:</div>
                                 <textarea id="outputArea" class="form-control output-textarea" readonly></textarea>
@@ -116,6 +122,7 @@
                 <option value="r">R</option>
                 <option value="ruby">Ruby</option>
                 <option value="php">PHP</option>
+                <option value="blockly">Blockly (Block-Based)</option>
             </select>
         </div>
         <button id="btnStart" class="btn btn-primary">Start Challenge</button>
@@ -126,6 +133,14 @@
         <h2>Congratulations! 🎉</h2>
         <p id="completionMessage">You've completed all 10 challenges!</p>
         <div class="final-time" id="finalTime">Final Time: --</div>
+        <div class="mt-4 text-center" id="finalSteps" style="display: none;">
+            <p><strong>Final Step:</strong> Please ensure you have downloaded all your work and upload it to the Google
+                Form below if required:</p>
+            <a href="https://forms.gle/YOUR_FORM_LINK" target="_blank" class="btn btn-info">Upload Work to Google
+                Form</a>
+            <p class="mt-2 small text-muted">Each time you submitted an answer, a file should have been downloaded
+                automatically.</p>
+        </div>
     </div>
 
     <!-- Custom Modal -->
