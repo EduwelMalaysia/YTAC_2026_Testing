@@ -2101,6 +2101,7 @@
         // Create a set of team codes that have voted
         // The vote record likely has 'student_id' or 'team_code' field.
         // Based on student_dashboard, the payload key is 'student_id' which stores the team_code.
+        const votedTeamCodes = new Set();
         let votesList = []; // New array to store all votes for column
         if (Array.isArray(votes)) {
           votesList = votes;
