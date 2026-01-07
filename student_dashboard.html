@@ -757,20 +757,48 @@
           } else {
             document.getElementById("innoView").style.display = "block";
 
-            // Check if already voted
-            const hasVoted = localStorage.getItem(`hasVoted_${team_code}`);
-            if (hasVoted === "true") {
-              const voteContainer = document.getElementById("voteContainer");
-              voteContainer.innerHTML = "<div class='blank'><h3>✅ You have already voted!</h3><p>Thank you for participating.</p></div>";
-              const submitBtn = document.getElementById("voteSubmit");
-              if (submitBtn) submitBtn.style.display = "none";
-            } else {
-              // Filter out Hackathon voting for IM and IT students
-              let catsToDisplay = categories;
-              if (team_code.startsWith("IM") || team_code.startsWith("IT")) {
-                catsToDisplay = categories.filter(c => !c.includes("Tech-Hackathon"));
+            // Check if already voted (Verify with server)
+            try {
+              const voteRes = await fetch(`${API}/votes?student_id=${team_code}`);
+              const voteData = await voteRes.json();
+              const hasVotedServer = Array.isArray(voteData) && voteData.length > 0;
+
+              // Sync localStorage with server truth
+              if (hasVotedServer) {
+                localStorage.setItem(`hasVoted_${team_code}`, "true");
+              } else {
+                localStorage.removeItem(`hasVoted_${team_code}`);
               }
-              catsToDisplay.forEach(cat => loadTeamsForCategory(cat));
+
+              if (hasVotedServer) {
+                const voteContainer = document.getElementById("voteContainer");
+                voteContainer.innerHTML = "<div class='blank'><h3>✅ You have already voted!</h3><p>Thank you for participating.</p></div>";
+                const submitBtn = document.getElementById("voteSubmit");
+                if (submitBtn) submitBtn.style.display = "none";
+              } else {
+                // Filter out Hackathon voting for IM and IT students
+                let catsToDisplay = categories;
+                if (team_code.startsWith("IM") || team_code.startsWith("IT")) {
+                  catsToDisplay = categories.filter(c => !c.includes("Tech-Hackathon"));
+                }
+                catsToDisplay.forEach(cat => loadTeamsForCategory(cat));
+              }
+            } catch (err) {
+              console.error("Failed to fetch voting status:", err);
+              // Fallback to local storage if server check fails
+              const hasVotedLocal = localStorage.getItem(`hasVoted_${team_code}`);
+              if (hasVotedLocal === "true") {
+                const voteContainer = document.getElementById("voteContainer");
+                voteContainer.innerHTML = "<div class='blank'><h3>✅ You have already voted!</h3><p>Thank you for participating.</p></div>";
+                const submitBtn = document.getElementById("voteSubmit");
+                if (submitBtn) submitBtn.style.display = "none";
+              } else {
+                let catsToDisplay = categories;
+                if (team_code.startsWith("IM") || team_code.startsWith("IT")) {
+                  catsToDisplay = categories.filter(c => !c.includes("Tech-Hackathon"));
+                }
+                catsToDisplay.forEach(cat => loadTeamsForCategory(cat));
+              }
             }
           }
 

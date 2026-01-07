@@ -478,8 +478,16 @@ var worker_default = {
 		// START FIX: Add GET /votes endpoint
 		if (url.pathname === "/votes" && method === "GET") {
 			try {
-				// Return all votes or aggregated - as requested by admin dashboard logic
-				const { results } = await db.prepare("SELECT * FROM votes").all();
+				const student_id = url.searchParams.get("student_id");
+				let query = "SELECT * FROM votes";
+				let params = [];
+
+				if (student_id) {
+					query += " WHERE student_id = ?";
+					params.push(student_id);
+				}
+
+				const { results } = await db.prepare(query).bind(...params).all();
 				return jsonResponse(results);
 			} catch (err) {
 				return jsonResponse({ success: false, error: String(err) }, 500);
