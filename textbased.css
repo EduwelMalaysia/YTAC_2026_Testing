@@ -320,9 +320,10 @@ a {
     display: flex;
     flex-direction: column;
     padding: 15px;
-    gap: 10px;
+    gap: 15px;
     background: #fff;
     overflow-y: auto;
+    border-left: 1px solid #dee2e6;
 }
 
 .buttons-row {
@@ -331,71 +332,38 @@ a {
     flex-shrink: 0;
 }
 
+.blockly-submission-box {
+    flex-shrink: 0;
+}
+
 .output-matching {
-    flex: 0 0 auto;
-    /* Don't grow, size to content */
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    max-height: 30%;
-    /* Limit height */
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .output-textarea {
-    min-height: 80px;
-    height: 100px;
+    height: 120px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    resize: none;
+    background: #f8f9fa !important;
 }
 
 .test-case-status {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 300px; /* Ensure test cases have a base area */
     flex: 1;
-    /* Take remaining space */
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    min-height: 0;
-    /* Allow shrinking */
-}
-
-.controls-section {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
-}
-
-.buttons-row {
-    display: flex;
-    gap: 10px;
-}
-
-.results-container {
-    display: flex;
-    gap: 20px;
-}
-
-.output-matching {
-    flex: 0 0 35%;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.test-case-status {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    height: 100%;
 }
 
 .table-container {
-    flex: 1;
     overflow-y: auto;
     border: 1px solid #dee2e6;
     border-radius: 4px;
+    max-height: 500px;
 }
 
 .test-case-status table {
