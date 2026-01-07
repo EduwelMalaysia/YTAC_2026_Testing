@@ -605,6 +605,10 @@
         <button id="btnViewer" class="tbtn" role="tab" aria-controls="panelViewer" aria-selected="false">
           <span class="icon">📊</span> Score Viewer
         </button>
+        <button id="btnResults" class="tbtn" role="tab" aria-controls="panelResults" aria-selected="false">🏆 Tier-1
+          Results</button>
+        <button id="btnVoting" class="tbtn" role="tab" aria-controls="panelVoting" aria-selected="false">🗳️ Voting
+          Status</button>
       </nav>
     </aside>
 
@@ -635,7 +639,41 @@
               <label class="muted" for="judgeSelect">Judge Names</label>
               <select id="judgeSelect">
                 <option value="">— Select judge —</option>
-                <!-- filled by JS -->
+                <!-- Voting Status Panel -->
+                <div id="panelVoting" role="tabpanel" aria-labelledby="btnVoting" hidden>
+                  <div class="panel-header">
+                    <h2>Voting Status</h2>
+                    <button id="btnRefreshVoting" class="action-btn">🔄 Refresh</button>
+                  </div>
+                  <div class="voting-summary-cards">
+                    <div class="summary-card">
+                      <h3>Total Teams Voted</h3>
+                      <p id="totalVotesCount">Loading...</p>
+                    </div>
+                    <div class="summary-card">
+                      <h3>Participation Rate</h3>
+                      <p id="vote participationRate">Loading...</p>
+                    </div>
+                  </div>
+
+                  <div class="table-container">
+                    <table class="teams-table" id="votingTable">
+                      <thead>
+                        <tr>
+                          <th>Team Code</th>
+                          <th>Team Name</th>
+                          <th>Category</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody id="votingTableBody">
+                        <!-- Rows will be populated here -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Tier 1 Results Panel -->
               </select>
             </div>
           </div>
@@ -709,7 +747,7 @@
               <option value="coding">Coding Results</option>
             </select>
             <div class="spacer"></div>
-            <button class="btnr">⬇️ Export CSV</button>
+            <button class="btnr" id="exportBtn">⬇️ Export CSV</button>
           </div>
 
           <div class="team-list"></div>
@@ -936,7 +974,9 @@
       { btn: 'btnJudges', panel: 'panelJudges' },
       { btn: 'btnAssign', panel: 'panelAssign' },
       { btn: 'btnQuestion', panel: 'panelQuestion' },
-      { btn: 'btnViewer', panel: 'panelViewer' }
+      { btn: 'btnViewer', panel: 'panelViewer' },
+      { btn: 'btnResults', panel: 'panelResults' },
+      { btn: 'btnVoting', panel: 'panelVoting' }
     ];
 
     async function populateAssignJudgeDropdown() {
@@ -971,6 +1011,7 @@
         const el = document.getElementById(panel);
         if (!el) return;
         el.classList.toggle('active', panel === panelId);
+        el.hidden = !(panel === panelId); // Hide/show panels
       });
     }
 
@@ -1098,91 +1139,105 @@
     async function fetchTeams() {
       console.log("🔄 fetchTeams called");
       try {
-        const [teamsRes, resultsRes] = await Promise.all([
-          fetch(`${API}/teams`),
-          fetch(`${API}/tier1-results`).catch(() => null)
-        ]);
+        // 1. Fetch Teams
+        const resTeams = await fetch(`${API}/teams`);
+        const teamsData = await resTeams.json();
+        allTeams = Array.isArray(teamsData) ? teamsData : (teamsData.results || []);
 
-        if (!teamsRes.ok) throw new Error('Failed to load teams');
-
-        // Helper to safely parse JSON or return empty/null
-        const safeJson = async (res) => {
-          if (!res || !res.ok) return null;
-          const text = await res.text();
-          try {
-            return JSON.parse(text);
-          } catch (e) {
-            console.warn("Response was not JSON:", text);
-            return null;
+        // 2. Fetch All Scores (for auto-calculation)
+        let scoreMap = {};
+        try {
+          const resScores = await fetch(`${API}/all-scores`);
+          if (resScores.ok) {
+            const allScores = await resScores.json();
+            // Group by team -> criteria
+            allScores.forEach(s => {
+              if (!scoreMap[s.team_code]) scoreMap[s.team_code] = {};
+              if (!scoreMap[s.team_code][s.criteria_code]) scoreMap[s.team_code][s.criteria_code] = [];
+              scoreMap[s.team_code][s.criteria_code].push(parseFloat(s.score));
+            });
           }
-        };
+        } catch (e) { console.warn("Could not fetch scores for auto-calc", e); }
 
-        allTeams = await safeJson(teamsRes) || [];
-        let contestResultsRaw = await safeJson(resultsRes);
+        // 3. Merge Scores into Teams (Trimmed Mean Logic)
+        allTeams = allTeams.map(team => {
+          const scores = scoreMap[team.team_code];
+          if (!scores) return team; // No scores yet
 
-        // Handle different response formats (D1 returns {results: [...]} or direct array)
-        let contestResults = [];
-        if (contestResultsRaw) {
-          if (Array.isArray(contestResultsRaw)) {
-            contestResults = contestResultsRaw;
-          } else if (contestResultsRaw.results && Array.isArray(contestResultsRaw.results)) {
-            contestResults = contestResultsRaw.results;
-          } else if (contestResultsRaw.data && Array.isArray(contestResultsRaw.data)) {
-            contestResults = contestResultsRaw.data;
+          let totalScore = 0;
+
+          // Extended Criteria Mapping
+          // IM (Inno-Maker): C001-C006
+          // IT (Inno-Tech): T001-T005
+          const criteriaKeys = {
+            // Inno-Maker
+            'C001': 'final_creativity',
+            'C002': 'final_practical',
+            'C003': 'final_social',
+            'C004': 'final_cost',
+            'C005': 'final_sustainability', // New C005
+            'C006': 'final_presentation',   // New C006
+
+            // Inno-Tech
+            'T001': 'final_t1', // Basic Coding
+            'T002': 'final_t2', // Explain Code
+            'T003': 'final_t3', // System Flow
+            'T004': 'final_t4', // Script Test
+            'T005': 'final_t5'  // API Usage
+          };
+
+          for (const [cCode, valArr] of Object.entries(scores)) {
+            let finalArr = valArr;
+            // OUTLIER LOGIC: If >= 4 judges, drop min and max
+            if (valArr.length >= 4) {
+              valArr.sort((a, b) => a - b);
+              finalArr = valArr.slice(1, valArr.length - 1);
+            }
+
+            const sum = finalArr.reduce((a, b) => a + b, 0);
+            const avg = finalArr.length > 0 ? sum / finalArr.length : 0;
+
+            const key = criteriaKeys[cCode];
+            if (key) team[key] = avg;
+
+            totalScore += avg;
           }
-        }
+          team.final_score = totalScore;
+          return team;
+        });
 
-        // Cache the results globally
-        cachedContestResults = contestResults;
+        renderCurrentView();
 
-        if (contestResults.length === 0) {
-          console.warn("⚠️ No coding results found. The /tier1-results endpoint may not be returning data correctly.");
-          console.warn("💡 Make sure your backend has a GET handler for /tier1-results that returns the saved results.");
-        } else {
-          console.log("📊 Fetched coding results:", contestResults);
-        }
-
-        // Merge scores into allTeams
-        mergeScoresIntoTeams();
-
-        renderTeams(allTeams);
       } catch (err) {
         console.error(err);
-        viewerteamListContainer.innerHTML = `<p class="error">❌ Failed to load teams: ${err.message}</p>`;
+        document.querySelector('.team-list').innerHTML = `<div class="error">Failed to load teams: ${err.message}</div>`;
       }
     }
 
-    // Helper function to merge contest scores into allTeams
+    // Helper function to merge contest scores (kept for legacy if needed)
     function mergeScoresIntoTeams() {
-      const resultsMap = {};
-      cachedContestResults.forEach(r => {
-        if (r && r.team_code) {
-          // Keep the best score for each team
-          if (!resultsMap[r.team_code] || r.total_score > resultsMap[r.team_code].total_score) {
-            resultsMap[r.team_code] = r;
+      // This function is kept for backward compatibility if other parts call it, 
+      // but the main scoring logic is now in fetchTeams.
+      // We can add the legacy 'contest results' logic here if needed.
+      if (typeof cachedContestResults !== 'undefined' && cachedContestResults.length > 0) {
+        const resultsMap = {};
+        cachedContestResults.forEach(r => {
+          if (r && r.team_code) {
+            if (!resultsMap[r.team_code] || r.total_score > resultsMap[r.team_code].total_score) {
+              resultsMap[r.team_code] = r;
+            }
           }
-        }
-      });
+        });
 
-      console.log("📊 Results map:", resultsMap);
-
-      // Merge results into allTeams
-      allTeams.forEach(team => {
-        if (resultsMap[team.team_code]) {
-          team.contest_score = resultsMap[team.team_code].total_score;
-          team.contest_time = resultsMap[team.team_code].total_time;
-          console.log(`✅ Merged score for ${team.team_code}:`, team.contest_score);
-        } else {
-          team.contest_score = null;
-        }
-      });
-
-      console.log("📊 Teams with scores:", allTeams.map(t => ({
-        code: t.team_code,
-        score: t.contest_score,
-        time: t.contest_time
-      })));
+        allTeams.forEach(team => {
+          if (resultsMap[team.team_code]) {
+            team.contest_score = resultsMap[team.team_code].total_score;
+            team.contest_time = resultsMap[team.team_code].total_time;
+          }
+        });
+      }
     }
+
     function renderTeams(teams) {
       if (!teams || teams.length === 0) {
         viewerteamListContainer.innerHTML = '<p class="empty">No teams found.</p>';
@@ -1190,16 +1245,14 @@
       }
 
       const viewType = document.getElementById('viewer-type')?.value || 'presentation';
+      const currentCategory = viewerCategorySelect.value || "";
 
-      console.log("🎨 renderTeams called with viewType:", viewType);
-      console.log("🎨 Teams received:", teams.map(t => ({
-        code: t.team_code,
-        score: t.contest_score,
-        time: t.contest_time
-      })));
+      // Determine view mode
+      const isMixed = !currentCategory;
+      const isIT = currentCategory.toLowerCase().includes('inno-tech');
 
       const awardOptions = [
-        "", // empty = no award
+        "",
         "champion",
         "1st runner up",
         "2nd runner up",
@@ -1211,68 +1264,64 @@
         "The Sustainability Idea Award",
         "The Entrepreneurial Award"
       ];
-
       const gradeOptions = ["", "titanium", "gold", "silver", "bronze"];
 
-      const rows = teams.map(team => {
+      // Helper to generate selects
+      const getSelects = (team) => {
         const currentAward = team.award || "";
         const currentGrade = team.grade || "";
-
         const awardSelect = `
           <select class="award-select" data-team-code="${team.team_code}">
             ${awardOptions.map(opt =>
-          `<option value="${opt}" ${opt === currentAward ? 'selected' : ''}>
-                ${opt || "— No award —"}
-              </option>`
-        ).join('')}
-          </select>
-        `;
-
+          `<option value="${opt}" ${opt === currentAward ? 'selected' : ''}>${opt || "— No award —"}</option>`).join('')}
+          </select>`;
         const gradeSelect = `
           <select class="grade-select" data-team-code="${team.team_code}">
             ${gradeOptions.map(opt =>
-          `<option value="${opt}" ${opt === currentGrade ? 'selected' : ''}>
-                ${opt || "— No grade —"}
-              </option>`
-        ).join('')}
-          </select>
-        `;
+          `<option value="${opt}" ${opt === currentGrade ? 'selected' : ''}>${opt || "— No grade —"}</option>`).join('')}
+          </select>`;
+        return { awardSelect, gradeSelect };
+      };
 
-        if (viewType === 'coding') {
-          return `
-            <tr data-team-code="${team.team_code}">
-              <td>${team.team_code || '—'}</td>
-              <td>${team.team_name || '—'}</td>
-              <td>${team.category || '—'}</td>
-              <td><div style="font-size: 11px; white-space: pre-wrap; max-width: 150px;">${team.student_names || '—'}</div></td>
-              <td style="background: #fdf2f2; font-weight: bold; color: #991b1b;">${(team.contest_score != null) ? team.contest_score + '%' : '—'}</td>
-              <td>${team.contest_time || '—'}</td>
-            </tr>
-          `;
-        } else {
-          // presentation view
-          return `
-            <tr data-team-code="${team.team_code}">
-              <td>${team.team_code || '—'}</td>
-              <td>${team.team_name || '—'}</td>
-              <td>${team.category || '—'}</td>
-              <td><div style="font-size: 11px; white-space: pre-wrap; max-width: 150px;">${team.student_names || '—'}</div></td>
-              <td>${(team.final_creativity != null) ? team.final_creativity.toFixed(2) : '—'}</td>
-              <td>${(team.final_practical != null) ? team.final_practical.toFixed(2) : '—'}</td>
-              <td>${(team.final_social != null) ? team.final_social.toFixed(2) : '—'}</td>
-              <td>${(team.final_cost != null) ? team.final_cost.toFixed(2) : '—'}</td>
-              <td>${(team.final_presentation != null) ? team.final_presentation.toFixed(2) : '—'}</td>
-              <td><strong>${(team.final_score != null) ? team.final_score.toFixed(2) : '—'}</strong></td>
-              <td>${awardSelect}</td>
-              <td>${gradeSelect}</td>
-            </tr>
-          `;
-        }
-      }).join('');
+      const fmt = (n) => (n != null && typeof n === 'number') ? n.toFixed(2) : '—';
 
-      let header;
-      if (viewType === 'coding') {
-        header = `
+      // headers
+      const headersIT = `
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Team Name</th>
+              <th>Students</th>
+              <th>Basic Code (T1)</th>
+              <th>Explain (T2)</th>
+              <th>Flow (T3)</th>
+              <th>Test (T4)</th>
+              <th>API (T5)</th>
+              <th>Final Score</th>
+              <th>Award</th>
+              <th>Grade</th>
+            </tr>
+          </thead>`;
+
+      const headersIM = `
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Team Name</th>
+              <th>Students</th>
+              <th>Creativity</th>
+              <th>Practical</th>
+              <th>Social</th>
+              <th>Cost</th>
+              <th>Sustain.</th>
+              <th>Pres.</th>
+              <th>Final Score</th>
+              <th>Award</th>
+              <th>Grade</th>
+            </tr>
+          </thead>`;
+
+      const headersCoding = `
           <thead>
             <tr>
               <th>Team Code</th>
@@ -1283,46 +1332,121 @@
               <th>Time Taken</th>
             </tr>
           </thead>`;
-      } else {
-        header = `
-          <thead>
-            <tr>
-              <th>Team Code</th>
-              <th>Team Name</th>
-              <th>Category</th>
-              <th>Students</th>
-              <th>Creativity</th>
-              <th>Practical</th>
-              <th>Social</th>
-              <th>Cost</th>
-              <th>Presentation</th>
-              <th>Final Score</th>
-              <th>Award</th>
-              <th>Grade</th>
-            </tr>
-          </thead>`;
+
+
+      // Row Generators
+      const renderRowIT = (team) => {
+        const { awardSelect, gradeSelect } = getSelects(team);
+        return `
+            <tr data-team-code="${team.team_code}">
+              <td>${team.team_code || '—'}</td>
+              <td>${team.team_name || '—'}</td>
+              <td><div style="font-size: 11px; white-space: pre-wrap; max-width: 150px;">${team.student_names || '—'}</div></td>
+              <td>${fmt(team.final_t1)}</td>
+              <td>${fmt(team.final_t2)}</td>
+              <td>${fmt(team.final_t3)}</td>
+              <td>${fmt(team.final_t4)}</td>
+              <td>${fmt(team.final_t5)}</td>
+              <td><strong>${fmt(team.final_score)}</strong></td>
+              <td>${awardSelect}</td>
+              <td>${gradeSelect}</td>
+            </tr>`;
+      };
+
+      const renderRowIM = (team) => {
+        const { awardSelect, gradeSelect } = getSelects(team);
+        return `
+            <tr data-team-code="${team.team_code}">
+              <td>${team.team_code || '—'}</td>
+              <td>${team.team_name || '—'}</td>
+              <td><div style="font-size: 11px; white-space: pre-wrap; max-width: 150px;">${team.student_names || '—'}</div></td>
+              <td>${fmt(team.final_creativity)}</td>
+              <td>${fmt(team.final_practical)}</td>
+              <td>${fmt(team.final_social)}</td>
+              <td>${fmt(team.final_cost)}</td>
+              <td>${fmt(team.final_sustainability)}</td>
+              <td>${fmt(team.final_presentation)}</td>
+              <td><strong>${fmt(team.final_score)}</strong></td>
+              <td>${awardSelect}</td>
+              <td>${gradeSelect}</td>
+            </tr>`;
+      };
+
+      const renderRowCoding = (team) => {
+        return `
+            <tr data-team-code="${team.team_code}">
+              <td>${team.team_code || '—'}</td>
+              <td>${team.team_name || '—'}</td>
+              <td>${team.category || '—'}</td>
+              <td><div style="font-size: 11px; white-space: pre-wrap; max-width: 150px;">${team.student_names || '—'}</div></td>
+              <td style="background: #fdf2f2; font-weight: bold; color: #991b1b;">${(team.contest_score != null) ? team.contest_score + '%' : '—'}</td>
+              <td>${team.contest_time || '—'}</td>
+            </tr>`;
+      };
+
+
+      // RENDER LOGIC
+      if (viewType === 'coding') {
+        // Simple single table
+        const rows = teams.map(renderRowCoding).join('');
+        viewerteamListContainer.innerHTML = `<div style="overflow-x: auto;"><table class="teams-table">${headersCoding}<tbody>${rows}</tbody></table></div>`;
+        return;
       }
 
-      viewerteamListContainer.innerHTML = `
-        <div style="overflow-x: auto;">
-          <table class="teams-table">
-            ${header}
-            <tbody>
-              ${rows}
-            </tbody>
-          </table>
-        </div>
-      `;
+      if (isMixed) {
+        // Split into IT and IM
+        const itTeams = teams.filter(t => (t.category || '').toLowerCase().includes('inno-tech'));
+        const imTeams = teams.filter(t => !(t.category || '').toLowerCase().includes('inno-tech'));
 
-      // Add event listeners to all award/grade dropdowns
+        let html = '';
+
+        // 1. Render IT Table
+        if (itTeams.length > 0) {
+          html += `<h3 style="margin-bottom:10px; color:#1e293b;">Inno-Tech Categories (IT/IS)</h3>`;
+          html += `<div style="overflow-x: auto; margin-bottom: 40px;">
+                      <table class="teams-table">
+                        ${headersIT}
+                        <tbody>${itTeams.map(renderRowIT).join('')}</tbody>
+                      </table>
+                     </div>`;
+        }
+
+        // 2. Render IM Table
+        if (imTeams.length > 0) {
+          html += `<h3 style="margin-bottom:10px; color:#1e293b;">Inno-Maker Categories (IM)</h3>`;
+          html += `<div style="overflow-x: auto;">
+                        <table class="teams-table">
+                          ${headersIM}
+                          <tbody>${imTeams.map(renderRowIM).join('')}</tbody>
+                        </table>
+                      </div>`;
+        }
+
+        if (itTeams.length === 0 && imTeams.length === 0) {
+          html = '<p class="empty">No active teams found.</p>';
+        }
+
+        viewerteamListContainer.innerHTML = html;
+
+      } else {
+        // Specific Category Selected
+        if (isIT) {
+          const rows = teams.map(renderRowIT).join('');
+          viewerteamListContainer.innerHTML = `<div style="overflow-x: auto;"><table class="teams-table">${headersIT}<tbody>${rows}</tbody></table></div>`;
+        } else {
+          const rows = teams.map(renderRowIM).join('');
+          viewerteamListContainer.innerHTML = `<div style="overflow-x: auto;"><table class="teams-table">${headersIM}<tbody>${rows}</tbody></table></div>`;
+        }
+      }
+
+
       viewerteamListContainer.querySelectorAll('.award-select').forEach(select => {
         select.addEventListener('change', handleAwardChange);
       });
       viewerteamListContainer.querySelectorAll('.grade-select').forEach(select => {
         select.addEventListener('change', handleGradeChange);
       });
-
-    } // This closes the renderTeams function
+    }
 
     viewerCategorySelect?.addEventListener('change', () => {
       renderCurrentView();
@@ -1336,58 +1460,46 @@
       const selectedCategory = viewerCategorySelect.value;
       const viewType = document.getElementById('viewer-type')?.value || 'presentation';
 
-      // Always re-merge scores to ensure they persist
+      // Re-merge scores
       mergeScoresIntoTeams();
-
-      console.log("🔍 renderCurrentView - allTeams before filter:", allTeams.find(t => t.team_code === 'THP-001'));
 
       let filtered = selectedCategory
         ? allTeams.filter(team => team.category === selectedCategory)
         : allTeams;
 
-      // Coding results are only for Tech-Hackathon (TH) peeps
       if (viewType === 'coding') {
         filtered = filtered.filter(team => (team.category || '').startsWith("Tech-Hackathon"));
       }
 
-      console.log("🔍 renderCurrentView - filtered result:", filtered.find(t => t.team_code === 'THP-001'));
-
       renderTeams(filtered);
     }
 
-    // Save award
     async function handleAwardChange(e) {
       const teamCode = e.target.dataset.teamCode;
-      const award = e.target.value || null; // null if empty
-
+      const award = e.target.value || null;
       try {
         const res = await fetch(`${API}/teams/${teamCode}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ award })
         });
-
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         console.log(`Award saved for ${teamCode}:`, award || "none");
       } catch (err) {
         console.error("Failed to save award:", err);
         alert("❌ Failed to save award. Check console.");
-        // Revert UI (optional)
       }
     }
 
-    // Save grade
     async function handleGradeChange(e) {
       const teamCode = e.target.dataset.teamCode;
       const grade = e.target.value || null;
-
       try {
         const res = await fetch(`${API}/teams/${teamCode}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ grade })
         });
-
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         console.log(`Grade saved for ${teamCode}:`, grade || "none");
       } catch (err) {
@@ -1473,6 +1585,30 @@
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+    });
+
+    // --- Calculate Final Results ---
+    document.getElementById('calcBtn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('calcBtn');
+      if (!confirm("This will recalculate final scores for ALL teams based on all judge submissions. This may take a few seconds.\n\nContinue?")) return;
+
+      btn.disabled = true;
+      btn.textContent = "Calculating...";
+      try {
+        const res = await fetch(`${API}/calculate-results`, { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok || !data.success) throw new Error(data.error || "Unknown error");
+
+        alert(`✅ Calculation Complete!\n\nProcessed ${data.teams_processed} teams.\nUpdated scores for ${data.teams_updated} teams.`);
+        fetchTeams(); // Refresh table
+      } catch (e) {
+        console.error(e);
+        alert("❌ Calculation Failed: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "🧮 Calculate Final Results";
+      }
     });
 
     // Load on init
@@ -1783,7 +1919,100 @@
       teamListStatus.textContent = `Showing ${filteredTeams.length} team(s).`;
     });
 
-    // --- INIT ---
+    // --- VOTING STATUS LOGIC ---
+    const btnVoting = document.getElementById("btnVoting");
+    const panelVoting = document.getElementById("panelVoting");
+    const btnRefreshVoting = document.getElementById("btnRefreshVoting");
+
+    btnVoting?.addEventListener("click", () => {
+      showPanel('panelVoting', 'btnVoting'); // Use the generic showPanel function
+      fetchVotingStatus();
+    });
+
+    btnRefreshVoting?.addEventListener("click", fetchVotingStatus);
+
+    async function fetchVotingStatus() {
+      const tableBody = document.getElementById("votingTableBody");
+      const countDisplay = document.getElementById("totalVotesCount");
+      const rateDisplay = document.getElementById("vote participationRate");
+
+      if (!tableBody || !countDisplay || !rateDisplay) return; // Ensure elements exist
+
+      tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center">Loading data...</td></tr>';
+      countDisplay.textContent = "...";
+      rateDisplay.textContent = "...";
+
+      try {
+        // 1. Fetch Teams
+        const teamsRes = await fetch(`${API}/teams`);
+        const teams = await teamsRes.json();
+
+        // 2. Fetch Votes
+        // Assuming GET /votes returns a list of all vote records
+        // If GET /votes is not standard, we might need to check how to get them.
+        // As per user request "use the votes table", we assume endpoint exists.
+        const votesRes = await fetch(`${API}/votes`);
+        let votes = [];
+        if (votesRes.ok) {
+          votes = await votesRes.json();
+        } else {
+          console.warn("GET /votes failed, assuming empty or restricted");
+        }
+
+        // Create a set of team codes that have voted
+        // The vote record likely has 'student_id' or 'team_code' field.
+        // Based on student_dashboard, the payload key is 'student_id' which stores the team_code.
+        const votedTeamCodes = new Set();
+        if (Array.isArray(votes)) {
+          votes.forEach(v => {
+            const code = v.student_id || v.team_code; // Handle potential variations
+            if (code) votedTeamCodes.add(code);
+          });
+        } else if (votes && typeof votes === 'object') {
+          // Handle if data is wrapped { votes: [...] }
+          const list = votes.votes || votes.data || [];
+          list.forEach(v => {
+            const code = v.student_id || v.team_code;
+            if (code) votedTeamCodes.add(code);
+          });
+        }
+
+        // 3. Render
+        tableBody.innerHTML = "";
+        let votedCount = 0;
+        const teamsList = Array.isArray(teams) ? teams : [];
+
+        // Sort teams by code
+        teamsList.sort((a, b) => a.team_code.localeCompare(b.team_code));
+
+        teamsList.forEach(team => {
+          const hasVoted = votedTeamCodes.has(team.team_code);
+          if (hasVoted) votedCount++;
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+                    <td>${team.team_code}</td>
+                    <td>${team.team_name}</td>
+                    <td>${team.category}</td>
+                    <td style="text-align: center;">
+                        ${hasVoted ? '<span style="color:green; font-weight:bold;">✅ Voted</span>' : '<span style="color:red;">❌ Not Voted</span>'}
+                    </td>
+                `;
+          tableBody.appendChild(row);
+        });
+
+        // Update Summary
+        countDisplay.textContent = `${votedCount} / ${teamsList.length}`;
+        const rate = teamsList.length > 0 ? Math.round((votedCount / teamsList.length) * 100) : 0;
+        rateDisplay.textContent = `${rate}%`;
+
+      } catch (err) {
+        console.error("Error fetching voting status:", err);
+        tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Error loading data: ${err.message}</td></tr>`;
+      }
+    }
+
+    // --- UTILS ---
     loadTeams();
 
     const exportTeamsBtn = document.getElementById('exportTeamsBtn');

@@ -97,142 +97,246 @@
   </header>
 
   <main>
-    <label>Select Team:</label>
-    <select id="teamSelect">
-      <option value="">-- Select a Team --</option>
-    </select>
+    <main>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3 style="margin:0;">Evaluation</h3>
+        <button id="timerBtn" onclick="toggleTimer()" style="margin-top:0; background:#6c757d;">⏱️ Start 10m
+          Timer</button>
+      </div>
 
-    <div id="criteriaForm" style="margin-top:20px;"></div>
-    <button id="saveBtn" onclick="saveScores()">💾 Save Scores</button>
-  </main>
+      <label>Select Team (Sequential Order):</label>
+      <select id="teamSelect">
+        <option value="">-- Loading Assignments --</option>
+      </select>
 
-  <script>
-    const API = "https://judging-system.yeewengloke.workers.dev";
+      <div id="criteriaForm" style="margin-top:20px;"></div>
+      <button id="saveBtn" onclick="saveScores()">💾 Save Scores</button>
+    </main>
 
-    const judge_id = localStorage.getItem("judge_id");
-    if (!judge_id) window.location.href = "index.html";
+    <script>
+      const API = "https://judging-system.yeewengloke.workers.dev";
 
-    if (!localStorage.getItem("judge_id")) {
-      window.location.href = "index.html";
-    }
+      // --- AUTH CHECK ---
+      const judge_id = localStorage.getItem("judge_id");
+      if (!judge_id) window.location.href = "index.html";
+      if (isBackForwardNavigation()) {
+        localStorage.clear();
+        window.location.href = "index.html";
+      }
+      function isBackForwardNavigation() {
+        if (window.performance && window.performance.navigation) return window.performance.navigation.type === 2;
+        return false;
+      }
 
-    function isBackForwardNavigation() {
-      if (window.performance.getEntriesByType) {
-        const navEntries = performance.getEntriesByType("navigation");
-        if (navEntries.length > 0) {
-          return navEntries[0].type === "back_forward";
+      // --- DOM ---
+      const teamSelect = document.getElementById("teamSelect");
+      const formDiv = document.getElementById("criteriaForm");
+      const saveBtn = document.getElementById("saveBtn");
+      const timerBtn = document.getElementById("timerBtn");
+
+      let criteriaList = [];
+      let assignedTeamsList = []; // Store globally for re-render
+      let myScoresCache = {};     // Store globally to track progress
+
+      const DEFAULT_CRITERIA = [
+        { criteria_code: "creativity", criteria_name: "Creativity" },
+        { criteria_code: "practical", criteria_name: "Practicality" },
+        { criteria_code: "social", criteria_name: "Social Impact" },
+        { criteria_code: "cost", criteria_name: "Cost" },
+        { criteria_code: "presentation", criteria_name: "Presentation" }
+      ];
+
+      // --- TIMER LOGIC ---
+      let timerInterval = null;
+      let timeRemaining = 600; // 10 minutes
+      let isTimerRunning = false;
+
+      function toggleTimer() {
+        if (isTimerRunning) {
+          // Stop
+          clearInterval(timerInterval);
+          isTimerRunning = false;
+          timerBtn.textContent = "⏱️ Resume 10m Timer";
+          timerBtn.style.background = "#ffc107"; // Yellow/Pause
+          timerBtn.style.color = "#000";
+        } else {
+          // Start
+          if (timeRemaining <= 0) timeRemaining = 600; // Reset if finished previously
+          isTimerRunning = true;
+          timerBtn.style.background = "#dc3545"; // Red/Stop
+          timerBtn.style.color = "#fff";
+
+          timerInterval = setInterval(() => {
+            timeRemaining--;
+            updateTimerDisplay();
+
+            if (timeRemaining <= 0) {
+              clearInterval(timerInterval);
+              isTimerRunning = false;
+              timerBtn.textContent = "⏰ Time is Up!";
+              timerBtn.style.background = "#28a745";
+              alert("⏰ Time is Up! Please wrap up your grading.");
+            }
+          }, 1000);
+          updateTimerDisplay();
         }
       }
-      if (window.performance && window.performance.navigation) {
-        return window.performance.navigation.type === 2;
+
+      function updateTimerDisplay() {
+        const m = Math.floor(timeRemaining / 60);
+        const s = timeRemaining % 60;
+        timerBtn.textContent = `⏳ ${m}:${s.toString().padStart(2, '0')} (Stop)`;
       }
-      return false;
-    }
 
-    if (isBackForwardNavigation()) {
-      localStorage.removeItem("isAdmin");
-      localStorage.removeItem("judge_id");
-      window.location.href = "index.html";
-    }
 
-    const teamSelect = document.getElementById("teamSelect");
-    const formDiv = document.getElementById("criteriaForm");
-    const saveBtn = document.getElementById("saveBtn");
-
-    let criteriaList = [];
-
-    const DEFAULT_CRITERIA = [
-      { criteria_code: "creativity", criteria_name: "Creativity" },
-      { criteria_code: "practical", criteria_name: "Practicality" },
-      { criteria_code: "social", criteria_name: "Social Impact" },
-      { criteria_code: "cost", criteria_name: "Cost" },
-      { criteria_code: "presentation", criteria_name: "Presentation" }
-    ];
-
-    // ===== INIT =====
-    async function init() {
-      try {
-        // Try fetching from server, but fallback if fails/empty
+      // --- INIT ---
+      async function init() {
         try {
-          const critRes = await fetch(API + "/criteria");
-          if (!critRes.ok) throw new Error("Criteria endpoint failed");
-          const data = await critRes.json();
-          console.log("Fetched criteria raw data:", data); // 🔍 DEBUG
-
-          if (Array.isArray(data) && data.length > 0) {
-            // Normalize keys just in case
-            criteriaList = data.map(item => {
-              const code = item.criteria_code || item.code || item.id || (item.criteria_name ? item.criteria_name.toLowerCase() : "") || (item.name ? item.name.toLowerCase() : "");
-              const name = item.criteria_name || item.name || item.criteria_code || "Unknown Criteria";
-              return { criteria_code: code, criteria_name: name };
-            });
-            console.log("Normalized criteriaList:", criteriaList);
-          } else {
-            throw new Error("Empty criteria list");
+          // 1. Load Criteria
+          try {
+            const critRes = await fetch(API + "/criteria");
+            if (!critRes.ok) throw new Error("Criteria endpoint failed");
+            const data = await critRes.json();
+            if (Array.isArray(data) && data.length > 0) {
+              criteriaList = data.map(item => ({
+                criteria_code: item.criteria_code || item.code || item.id,
+                criteria_name: item.criteria_name || item.name
+              }));
+            } else { throw new Error("Empty list"); }
+          } catch (e) {
+            console.warn("Using default criteria:", e);
+            criteriaList = DEFAULT_CRITERIA;
           }
-        } catch (e) {
-          console.warn("Using default criteria because:", e);
-          criteriaList = DEFAULT_CRITERIA;
-        }
 
-        // 🔍 DEBUG: Log the exact URL
-        // Fix: Force uppercase for judge_id as DB stores it as J001 (uppercase) while login returns j001 (lowercase)
-        const effectiveJudgeId = judge_id.toUpperCase();
-        const teamsUrl = `${API}/assigned-teams?judge_id=${effectiveJudgeId}`;
-        console.log("Fetching from:", teamsUrl);
+          // 2. Load Assigned Teams AND My Scores (Parallel)
+          const effectiveJudgeId = judge_id.toUpperCase();
 
-        const teamsRes = await fetch(teamsUrl);
-        console.log("Status:", teamsRes.status); // Should be 200
+          const [teamsRes, scoresRes] = await Promise.all([
+            fetch(`${API}/assigned-teams?judge_id=${effectiveJudgeId}`),
+            fetch(`${API}/all-scores`) // Fetching all effectively, then we filter client side
+          ]);
 
-        const assignedTeams = await teamsRes.json();
-        console.log("Assigned teams:", assignedTeams); // Should be [ { team_code: "FE-001", ... } ]
+          if (!teamsRes.ok) throw new Error("Failed to load assignments");
+          const teamsData = await teamsRes.json();
+          assignedTeamsList = Array.isArray(teamsData) ? teamsData : (teamsData.results || []);
 
-        if (Array.isArray(assignedTeams)) {
-          assignedTeams.forEach(t => {
-            const opt = document.createElement("option");
-            opt.value = t.team_code;
-            opt.textContent = `${t.team_code} - ${t.team_name}`;
-            teamSelect.appendChild(opt);
+          let allScores = [];
+          if (scoresRes.ok) {
+            allScores = await scoresRes.json();
+          }
+
+          // Filter scores for THIS judge only
+          // Structure: [ {judge_id, team_code, criteria_code, score}, ... ]
+          // We just need to know WHICH teams are done.
+          // A team is "done" if we have at least one score entry for it? 
+          // Or strictly strictly speaking if all criteria are filled. 
+          // For simplicity: If ANY score exists for this judge+team, we count it as 'Judged'.
+
+          const myScores = allScores.filter(s => (s.judge_id || "").toUpperCase() === effectiveJudgeId);
+
+          // Build a Set of completed team codes
+          const doneTeamCodes = new Set(myScores.map(s => s.team_code));
+
+          // Cache detailed scores for rendering logic later
+          myScoresCache = {}; // Map: team_code -> { "C001": 10, ... }
+          myScores.forEach(s => {
+            if (!myScoresCache[s.team_code]) myScoresCache[s.team_code] = {};
+            myScoresCache[s.team_code][s.criteria_code] = s.score;
           });
+
+          renderDropdown(doneTeamCodes);
+
+          teamSelect.addEventListener("change", handleTeamChange);
+
+        } catch (err) {
+          console.error("Init failed:", err);
+          alert("Failed to initialize. Please refresh.");
         }
-
-        teamSelect.addEventListener("change", handleTeamChange);
-      } catch (err) {
-        console.error("Init failed:", err);
-        alert("Failed to load your assigned teams. Please log in again.");
-        logout();
       }
-    }
 
-    // ===== LOAD SCORES =====
-    async function handleTeamChange() {
-      const team_code = teamSelect.value;
-      if (!team_code) { formDiv.innerHTML = ""; return; }
-      formDiv.innerHTML = "<p>Loading scores...</p>";
+      function renderDropdown(doneTeamCodes) {
+        teamSelect.innerHTML = "";
 
-      try {
-        const url = `${API}/scores?judge_id=${judge_id}&team_code=${team_code}`;
-        const res = await fetch(url);
-        const existingScores = await res.json();
+        let nextFound = false;
+        let firstAvailable = null;
+
+        assignedTeamsList.forEach((t, index) => {
+          const isDone = doneTeamCodes.has(t.team_code);
+          const opt = document.createElement("option");
+          opt.value = t.team_code;
+
+          if (isDone) {
+            // Completed Team
+            opt.textContent = `✅ ${t.team_code} - ${t.team_name} (Done)`;
+            // User can revisit, but can't edit (handled in logic)
+          } else {
+            // Not Done yet
+            if (!nextFound) {
+              // This is the NEXT immediate team (The "Active" one)
+              opt.textContent = `👉 ${t.team_code} - ${t.team_name} (Judge Now)`;
+              nextFound = true;
+              firstAvailable = t.team_code;
+            } else {
+              // Future team -> LOCKED
+              opt.textContent = `🔒 ${t.team_code} - ${t.team_name} (Locked)`;
+              opt.disabled = true;
+            }
+          }
+          teamSelect.appendChild(opt);
+        });
+
+        // Auto-select the first available team if nothing selected
+        if (firstAvailable) {
+          teamSelect.value = firstAvailable;
+          handleTeamChange(); // load it
+        } else if (assignedTeamsList.length > 0) {
+          // All done? Select the last one maybe, or just stay
+          teamSelect.value = assignedTeamsList[assignedTeamsList.length - 1].team_code;
+          handleTeamChange();
+          showAlert("🎉 All assigned teams completed!", "success");
+        } else {
+          teamSelect.innerHTML = "<option>No teams assigned.</option>";
+        }
+      }
+
+      // ===== LOAD SCORES =====
+      function handleTeamChange() {
+        const team_code = teamSelect.value;
+
+        // RESET TIMER whenever we switch teams
+        if (isTimerRunning) {
+          clearInterval(timerInterval);
+          isTimerRunning = false;
+        }
+        timeRemaining = 600; // Reset to 10m
+        updateTimerDisplay();
+        timerBtn.textContent = "⏱️ Start 10m Timer";
+        timerBtn.style.background = "#6c757d";
+        timerBtn.style.color = "white";
+
+        if (!team_code) { formDiv.innerHTML = ""; return; }
+
+        formDiv.innerHTML = "<p>Loading...</p>";
+
+        // Use cached scores instead of fetching again (Optimization!)
+        const existingScores = myScoresCache[team_code] || {};
+        const isDone = Object.keys(existingScores).length > 0;
 
         renderScoringForm(existingScores);
 
-        if (Object.keys(existingScores).length > 0) {
-          // Already graded → disable
+        if (isDone) {
+          // Locked
           disableFormInputs();
-          showAlert("⚠️ You have already graded this team. Scores are locked.", "warning");
+          showAlert("✅ Scores submitted. (Read-only)", "success");
         } else {
-          showAlert("✅ You can now grade this team.", "success");
+          // Active
+          enableFormInputs();
+          showAlert("📝 Please enter scores.", "success");
         }
-      } catch (err) {
-        showAlert("⚠️ Could not load scores. Starting new grading.", "warning");
-        renderScoringForm({});
       }
-    }
 
-    // ===== RENDER FORM =====
-    function renderScoringForm(existingScores = {}) {
-      formDiv.innerHTML = criteriaList.map(c => `
+      function renderScoringForm(existingScores = {}) {
+        formDiv.innerHTML = criteriaList.map(c => `
         <label>
           ${c.criteria_name} (${c.criteria_code})
           <input type="range" id="${c.criteria_code}" min="0" max="10" step="1"
@@ -243,73 +347,101 @@
         </label>
       `).join("");
 
-      criteriaList.forEach(c => {
-        const slider = document.getElementById(c.criteria_code);
-        const disp = document.getElementById("disp_" + c.criteria_code);
-        slider.oninput = () => { disp.textContent = slider.value; };
-      });
-    }
-
-    // ===== ALERT BOX =====
-    function showAlert(message, type = "success") {
-      const old = formDiv.querySelector(".alert");
-      if (old) old.remove();
-      const alertDiv = document.createElement("div");
-      alertDiv.className = "alert";
-      if (type === "warning") {
-        alertDiv.style.borderLeftColor = "#ffc107";
-        alertDiv.style.backgroundColor = "#fff8e1";
-        alertDiv.style.color = "#856404";
+        criteriaList.forEach(c => {
+          const slider = document.getElementById(c.criteria_code);
+          const disp = document.getElementById("disp_" + c.criteria_code);
+          if (slider && disp) {
+            slider.oninput = () => { disp.textContent = slider.value; };
+          }
+        });
       }
-      alertDiv.textContent = message;
-      formDiv.prepend(alertDiv);
-    }
 
-    // ===== DISABLE FORM =====
-    function disableFormInputs() {
-      formDiv.querySelectorAll("input[type=range]").forEach(s => s.disabled = true);
-      saveBtn.disabled = true;
-    }
+      function showAlert(message, type = "success") {
+        const old = formDiv.querySelector(".alert");
+        if (old) old.remove();
+        const alertDiv = document.createElement("div");
+        alertDiv.className = "alert";
+        if (type === "warning") {
+          alertDiv.style.borderLeftColor = "#ffc107";
+          alertDiv.style.backgroundColor = "#fff8e1";
+          alertDiv.style.color = "#856404";
+        }
+        alertDiv.textContent = message;
+        formDiv.prepend(alertDiv);
+      }
 
-    // ===== SAVE SCORES =====
-    async function saveScores() {
-      const team_code = teamSelect.value;
-      if (!team_code) return alert("Please select a team first.");
+      function disableFormInputs() {
+        formDiv.querySelectorAll("input[type=range]").forEach(s => s.disabled = true);
+        saveBtn.disabled = true;
+        saveBtn.style.opacity = "0.5";
+      }
 
-      const scores = {};
-      criteriaList.forEach(c => {
-        scores[c.criteria_code] = parseFloat(document.getElementById(c.criteria_code)?.value) || 0;
-      });
+      function enableFormInputs() {
+        formDiv.querySelectorAll("input[type=range]").forEach(s => s.disabled = false);
+        saveBtn.disabled = false;
+        saveBtn.style.opacity = "1";
+      }
 
-      try {
-        const res = await fetch(API + "/scores", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ judge_id, team_code, scores }),
+      // ===== SAVE =====
+      async function saveScores() {
+        const team_code = teamSelect.value;
+        if (!team_code) return;
+
+        const scores = {};
+        criteriaList.forEach(c => {
+          scores[c.criteria_code] = parseFloat(document.getElementById(c.criteria_code)?.value) || 0;
         });
 
-        const data = await res.json();
-        if (data.success) {
-          alert("✅ Scores saved successfully!");
-          disableFormInputs();
-          showAlert("✅ Scores saved and locked.", "success");
-        } else {
-          throw new Error(data.error || "Unknown error");
+        const effectiveJudgeId = judge_id.toUpperCase();
+
+        try {
+          const res = await fetch(API + "/scores", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ judge_id: effectiveJudgeId, team_code, scores }),
+          });
+
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.message || "Save failed");
+
+          // SUCCESS
+          alert("✅ Saved!");
+
+          // Update local cache so we don't have to reload everything
+          if (!myScoresCache[team_code]) myScoresCache[team_code] = {};
+          Object.assign(myScoresCache[team_code], scores);
+
+          // RE-RENDER DROPDOWN to unlock next team
+          // We know this team is done now.
+          // We can just re-run renderDropdown logic
+
+          // Re-calculate "Done" set (inefficient but safe)
+          const allDoneCodes = new Set(Object.keys(myScoresCache));
+          renderDropdown(allDoneCodes);
+
+          // Stop timer?
+          if (isTimerRunning) {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            timerBtn.textContent = "⏱️ Start 10m Timer";
+            timerBtn.style.background = "#6c757d";
+            timeRemaining = 600;
+          }
+
+        } catch (err) {
+          console.error(err);
+          alert("❌ Error: " + err.message);
         }
-      } catch (err) {
-        alert("❌ Save failed: " + err.message);
       }
-    }
 
-    // ===== LOGOUT =====
-    function logout() {
-      localStorage.removeItem("judge_id");
-      window.location.href = "index.html";
-    }
+      function logout() {
+        localStorage.removeItem("judge_id");
+        window.location.href = "index.html";
+      }
 
-    // ===== START =====
-    init();
-  </script>
+      // Start
+      init();
+    </script>
 </body>
 
 </html>

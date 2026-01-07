@@ -44,18 +44,40 @@ function mapDbToChallenge(q) {
         if (inputRaw != null && outputRaw != null) {
             try {
                 // Remove potential JSON wrapper if it was stored as stringified JSON
-                const cleanInput = (typeof inputRaw === 'string' && inputRaw.startsWith('"')) ? JSON.parse(inputRaw) : inputRaw;
-                const cleanOutput = (typeof outputRaw === 'string' && outputRaw.startsWith('"')) ? JSON.parse(outputRaw) : outputRaw;
+                let cleanInput = inputRaw;
+                if (typeof inputRaw === 'string' && (inputRaw.startsWith('"') || inputRaw.startsWith('{'))) {
+                    try { cleanInput = JSON.parse(inputRaw); } catch (e) { }
+                }
+
+                let cleanOutput = outputRaw;
+                if (typeof outputRaw === 'string' && (outputRaw.startsWith('"') || outputRaw.startsWith('{'))) {
+                    try { cleanOutput = JSON.parse(outputRaw); } catch (e) { }
+                }
+
+                let finalStdin = "";
+                if (typeof cleanInput === 'object' && cleanInput !== null) {
+                    finalStdin = cleanInput.raw || JSON.stringify(cleanInput);
+                } else {
+                    finalStdin = String(cleanInput);
+                }
+
+                let finalStdout = "";
+                if (typeof cleanOutput === 'object' && cleanOutput !== null) {
+                    finalStdout = cleanOutput.raw || JSON.stringify(cleanOutput);
+                } else {
+                    finalStdout = String(cleanOutput);
+                }
 
                 testCases.push({
-                    stdin: typeof cleanInput === 'object' ? cleanInput.raw : cleanInput,
-                    stdout: typeof cleanOutput === 'object' ? cleanOutput.raw : cleanOutput,
+                    stdin: finalStdin,
+                    stdout: finalStdout,
                     desc: `Test Case ${i}`
                 });
             } catch (e) {
+                console.warn("Failed to parse test case", i, e);
                 testCases.push({
-                    stdin: inputRaw,
-                    stdout: outputRaw,
+                    stdin: String(inputRaw),
+                    stdout: String(outputRaw),
                     desc: `Test Case ${i}`
                 });
             }
@@ -289,7 +311,9 @@ function showQuestion(index) {
     const fileName = languageFiles[currentLanguage] || "main.py";
 
     // Load starter code into iframe
+    // INCREASED TIMEOUT to ensure iframe is ready on production logic
     setTimeout(() => {
+        console.log("Sending starter code to OneCompiler...");
         iframe.contentWindow.postMessage({
             eventType: 'populateCode',
             language: currentLanguage,
@@ -301,7 +325,7 @@ function showQuestion(index) {
             ],
             stdin: challenge.testCases[0].stdin
         }, '*');
-    }, 500);
+    }, 1000); // Increased from 500ms
 
     // Populate test case table
     const tableBody = document.getElementById('testCaseTableBody');
@@ -519,12 +543,6 @@ btnStart.addEventListener('click', () => {
     startTimer();
 });
 
-// btnEnd.addEventListener('click', () => {
-//     showModal("End Competition", "Are you sure you want to end the competition?", () => {
-//         endCompetition();
-//     });
-// });
-
 // Sidebar Toggle
 const btnToggleSidebar = document.getElementById('btnToggleSidebar');
 const sidebar = document.querySelector('.challenge-sidebar');
@@ -571,11 +589,13 @@ function runNextTestCase(code) {
         }, '*');
 
         // Trigger run after a short delay
+        // INCREASED due to production latency (50ms -> 500ms)
         setTimeout(() => {
+            console.log("Triggering run execution...");
             iframe.contentWindow.postMessage({
                 eventType: 'triggerRun'
             }, '*');
-        }, 50);
+        }, 500);
     }
     else {
         // All test cases completed
@@ -689,6 +709,7 @@ window.addEventListener('message', function (e) {
         if (currentTestCase) {
             const expectedOutput = currentTestCase.stdout;
             const isCaseCorrect = isAnswerCorrect(currentOutput, expectedOutput);
+            console.log("Run Complete. Expected:", expectedOutput, "Got:", currentOutput);
 
             if (isCaseCorrect) {
                 passCount++;
@@ -711,16 +732,10 @@ window.addEventListener('message', function (e) {
             currentTestIndex++;
             setTimeout(() => {
                 runNextTestCase(currentCode);
-            }, 1); // Reduced delay for faster execution
-
-
+            }, 100); // Increased slightly
         } else {
             // Fallback
             updateMatchDisplay(0, false);
         }
     }
 });
-
-// Initialize
-// Initialize handled in fetch
-// initQuestionList();
