@@ -208,7 +208,6 @@
     let passCount = 0;
     let currentLanguage = "python";
     let currentUser = "";
-    const COMPETITION_START_TIME = new Date("2026-01-08T10:08:00+08:00");
     const COMPETITION_DURATION_SEC = 2 * 60 * 60; // 2 hours in seconds
 
     const languageFiles = {
@@ -442,8 +441,16 @@
 
     // Start timer
     function startTimer() {
-        // startTime is now fixed
-        startTime = COMPETITION_START_TIME;
+        const teamCode = localStorage.getItem("team_code");
+        const startTimeKey = `competition_start_time_${teamCode}`;
+        const savedStartTime = localStorage.getItem(startTimeKey);
+
+        if (savedStartTime) {
+            startTime = new Date(savedStartTime);
+        } else {
+            startTime = new Date();
+            localStorage.setItem(startTimeKey, startTime.toISOString());
+        }
 
         timerInterval = setInterval(() => {
             const now = new Date();
@@ -473,10 +480,9 @@
 
     // Format final time
     function getFinalTime() {
-        const start = COMPETITION_START_TIME;
+        if (!startTime) return "00:00:00";
         const now = new Date();
-        // Calculate elapsed time from the FIXED start time
-        const elapsed = Math.max(0, Math.floor((now - start) / 1000));
+        const elapsed = Math.max(0, Math.floor((now - startTime) / 1000));
 
         const hours = Math.floor(elapsed / 3600);
         const minutes = Math.floor((elapsed % 3600) / 60);
