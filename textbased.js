@@ -126,8 +126,55 @@
                 return;
             }
 
+            // --- FETCH COMPLETED PROGRESS ---
+            try {
+                const progRes = await fetch(`${API}/my-progress?team_code=${team_code}`);
+                const progData = await progRes.json();
+                if (progData.success && progData.completedCodes) {
+                    // Map back from ID (question_code) to challenge index
+                    challenges.forEach((ch, idx) => {
+                        if (progData.completedCodes.includes(ch.id)) {
+                            completedQuestions.add(idx);
+                        }
+                    });
+                }
+            } catch (err) {
+                console.warn("Failed to fetch progress", err);
+            }
+
             // Initialize questions with student category
             initQuestionList(data.category);
+
+            // Jump to first uncompleted question
+            let firstUncompleted = -1;
+            challenges.forEach((ch, idx) => {
+                const cat = (ch.category || "").toLowerCase();
+                const isPrimary = typeof data.category === 'string' && data.category.toLowerCase().includes('primary');
+                // Basic category filter match
+                let match = false;
+                if (isPrimary) {
+                    if (cat === 'primary' || cat === 'general') match = true;
+                } else {
+                    if (cat !== 'primary') match = true;
+                }
+
+                if (match && !completedQuestions.has(idx) && firstUncompleted === -1) {
+                    firstUncompleted = idx;
+                }
+            });
+
+            if (firstUncompleted !== -1) {
+                showQuestion(firstUncompleted);
+            } else {
+                // If all completed, show first anyway or show modal? 
+                // Let's show first one that matches category if possible
+                const firstAny = challenges.findIndex(ch => {
+                    const cat = (ch.category || "").toLowerCase();
+                    const isPrimary = typeof data.category === 'string' && data.category.toLowerCase().includes('primary');
+                    return isPrimary ? (cat === 'primary' || cat === 'general') : (cat !== 'primary');
+                });
+                if (firstAny !== -1) showQuestion(firstAny);
+            }
 
             // Hide Blockly for non-primary students
             isPrimaryUser = typeof data.category === 'string' && data.category.toLowerCase().includes('primary');
@@ -161,7 +208,8 @@
     let passCount = 0;
     let currentLanguage = "python";
     let currentUser = "";
-    const COMPETITION_DURATION = 2 * 60 * 60; // 2 hours in seconds
+    const COMPETITION_START_TIME = new Date("2026-01-08T10:08:00+08:00");
+    const COMPETITION_DURATION_SEC = 2 * 60 * 60; // 2 hours in seconds
 
     const languageFiles = {
         "python": "main.py",
@@ -330,12 +378,20 @@
         <p>${challenge.description}</p>
     `;
 
-        // Get starter code for current language
-        // Fallback to python or empty string if not found
-        if (typeof challenge.starterCode === 'object') {
-            currentCode = challenge.starterCode[currentLanguage] || "";
+        // --- RESTORE DRAFT OR LOAD STARTER ---
+        const teamCode = localStorage.getItem("team_code");
+        const draftKey = `draft_${teamCode}_${challenge.id}`;
+        const savedDraft = localStorage.getItem(draftKey);
+
+        if (savedDraft) {
+            currentCode = savedDraft;
         } else {
-            currentCode = challenge.starterCode; // Legacy support or default
+            // Get starter code for current language
+            if (typeof challenge.starterCode === 'object') {
+                currentCode = challenge.starterCode[currentLanguage] || "";
+            } else {
+                currentCode = challenge.starterCode;
+            }
         }
 
         const fileName = languageFiles[currentLanguage] || "main.py";
@@ -386,13 +442,16 @@
 
     // Start timer
     function startTimer() {
-        startTime = new Date();
+        // startTime is now fixed
+        startTime = COMPETITION_START_TIME;
+
         timerInterval = setInterval(() => {
             const now = new Date();
             const elapsed = Math.floor((now - startTime) / 1000);
-            const remaining = COMPETITION_DURATION - elapsed;
+            const remaining = COMPETITION_DURATION_SEC - elapsed;
 
             if (remaining <= 0) {
+                timerDisplay.textContent = `Time Remaining: 00:00:00 `;
                 endCompetition();
                 return;
             }
@@ -414,8 +473,11 @@
 
     // Format final time
     function getFinalTime() {
-        if (!startTime) return "--";
-        const elapsed = Math.floor((new Date() - startTime) / 1000);
+        const start = COMPETITION_START_TIME;
+        const now = new Date();
+        // Calculate elapsed time from the FIXED start time
+        const elapsed = Math.max(0, Math.floor((now - start) / 1000));
+
         const hours = Math.floor(elapsed / 3600);
         const minutes = Math.floor((elapsed % 3600) / 60);
         const seconds = elapsed % 60;
@@ -736,6 +798,12 @@
                 // 4. Update UI
                 questionScores[currentQuestion] = score;
                 completedQuestions.add(currentQuestion);
+
+                // --- CLEAR DRAFT ---
+                const teamCode = localStorage.getItem("team_code");
+                const challengeId = currentChallenge.id;
+                localStorage.removeItem(`draft_${teamCode}_${challengeId}`);
+
                 updateQuestionList(); // This will lock it
 
                 // Move to next available question
@@ -766,6 +834,12 @@
         if (data.action === 'codeUpdate' && data.files && data.files.length > 0) {
             currentCode = data.files[0].content;
 
+            // --- AUTO-SAVE DRAFT ---
+            const teamCode = localStorage.getItem("team_code");
+            if (teamCode && challenges[currentQuestion]) {
+                const challengeId = challenges[currentQuestion].id;
+                localStorage.setItem(`draft_${teamCode}_${challengeId}`, currentCode);
+            }
         }
 
         // Check if it's a run complete event from the iframe

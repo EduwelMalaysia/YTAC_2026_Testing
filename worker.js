@@ -697,6 +697,25 @@ var worker_default = {
 			}
 		}
 
+		// GET /my-progress?team_code=X - Fetch completed question IDs
+		if (url.pathname === "/my-progress" && method === "GET") {
+			const team_code = url.searchParams.get("team_code");
+			if (!team_code) return jsonResponse({ error: "team_code is required" }, 400);
+
+			try {
+				const { results } = await db.prepare(`
+					SELECT question_code 
+					FROM question_submissions 
+					WHERE team_code = ?
+				`).bind(team_code).all();
+
+				const codes = results.map(r => r.question_code);
+				return jsonResponse({ success: true, completedCodes: codes });
+			} catch (err) {
+				return jsonResponse({ error: String(err) }, 500);
+			}
+		}
+
 		if (url.pathname === "/scores" && method === "POST") {
 			try {
 				const { judge_id, team_code, scores } = await request.json();
