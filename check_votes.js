@@ -1,20 +1,19 @@
 
-
 async function checkVotes() {
+	const teamCode = 'ITPS-001';
+	const API = "https://judging-system.yeewengloke.workers.dev";
 	try {
-		const res = await fetch("https://judging-system.yeewengloke.workers.dev/votes");
+		const res = await fetch(`${API}/votes?student_id=${teamCode}`);
 		const data = await res.json();
-		console.log("Total votes:", data.length);
-		const target = data.filter(v => v.student_id === 'ITSH-009' || v.team_code === 'ITSH-009');
-		console.log("Votes for ITSH-009:", target);
+		console.log(`Votes for ${teamCode}:`, data);
 
-		if (target.length > 0) {
+		if (data.length > 0) {
 			console.log("Data persists in DB.");
 		} else {
-			console.log("No data for ITSH-009 found. Frontend issue?");
+			console.log(`No data for ${teamCode} found in DB.`);
 		}
 	} catch (e) {
-		console.error(e);
+		console.error("Fetch failed:", e);
 	}
 }
 

@@ -693,6 +693,10 @@
         // ----- SUBMIT VOTES -----
         document.getElementById("voteSubmit").addEventListener("click", async () => {
           const statusEl = document.getElementById("voteStatus");
+          const submitBtn = document.getElementById("voteSubmit");
+
+          // Disable button to prevent double-clicks
+          submitBtn.disabled = true;
           statusEl.textContent = "Submitting votes…";
 
           try {
@@ -714,20 +718,15 @@
             const data = JSON.parse(text);
             statusEl.textContent = "Votes submitted successfully ✅";
 
-            // Mark as voted locally
-            localStorage.setItem(`hasVoted_${team_code}`, "true");
-
-            // Update UI to reflect voted state immediately
+            // Clear status after a moment (button stays disabled)
             setTimeout(() => {
-              const voteContainer = document.getElementById("voteContainer");
-              voteContainer.innerHTML = "<div class='blank'><h3>✅ You have already voted!</h3><p>Thank you for participating.</p></div>";
-              document.getElementById("voteSubmit").style.display = "none";
               statusEl.textContent = "";
-            }, 1500);
+            }, 2000);
 
           } catch (err) {
             console.error(err);
             statusEl.textContent = "Error submitting votes: " + err.message;
+            submitBtn.disabled = false; // Re-enable on error
           }
 
         });
@@ -757,49 +756,12 @@
           } else {
             document.getElementById("innoView").style.display = "block";
 
-            // Check if already voted (Verify with server)
-            try {
-              const voteRes = await fetch(`${API}/votes?student_id=${team_code}`);
-              const voteData = await voteRes.json();
-              const hasVotedServer = Array.isArray(voteData) && voteData.length > 0;
-
-              // Sync localStorage with server truth
-              if (hasVotedServer) {
-                localStorage.setItem(`hasVoted_${team_code}`, "true");
-              } else {
-                localStorage.removeItem(`hasVoted_${team_code}`);
-              }
-
-              if (hasVotedServer) {
-                const voteContainer = document.getElementById("voteContainer");
-                voteContainer.innerHTML = "<div class='blank'><h3>✅ You have already voted!</h3><p>Thank you for participating.</p></div>";
-                const submitBtn = document.getElementById("voteSubmit");
-                if (submitBtn) submitBtn.style.display = "none";
-              } else {
-                // Filter out Hackathon voting for IM and IT students
-                let catsToDisplay = categories;
-                if (team_code.startsWith("IM") || team_code.startsWith("IT")) {
-                  catsToDisplay = categories.filter(c => !c.includes("Tech-Hackathon"));
-                }
-                catsToDisplay.forEach(cat => loadTeamsForCategory(cat));
-              }
-            } catch (err) {
-              console.error("Failed to fetch voting status:", err);
-              // Fallback to local storage if server check fails
-              const hasVotedLocal = localStorage.getItem(`hasVoted_${team_code}`);
-              if (hasVotedLocal === "true") {
-                const voteContainer = document.getElementById("voteContainer");
-                voteContainer.innerHTML = "<div class='blank'><h3>✅ You have already voted!</h3><p>Thank you for participating.</p></div>";
-                const submitBtn = document.getElementById("voteSubmit");
-                if (submitBtn) submitBtn.style.display = "none";
-              } else {
-                let catsToDisplay = categories;
-                if (team_code.startsWith("IM") || team_code.startsWith("IT")) {
-                  catsToDisplay = categories.filter(c => !c.includes("Tech-Hackathon"));
-                }
-                catsToDisplay.forEach(cat => loadTeamsForCategory(cat));
-              }
+            // Show voting UI without checking if already voted
+            let catsToDisplay = categories;
+            if (team_code.startsWith("IM") || team_code.startsWith("IT")) {
+              catsToDisplay = categories.filter(c => !c.includes("Tech-Hackathon"));
             }
+            catsToDisplay.forEach(cat => loadTeamsForCategory(cat));
           }
 
           try {
