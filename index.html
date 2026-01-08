@@ -119,8 +119,10 @@
           msg.innerText = data.message || "Invalid credentials.";
           document.getElementById("password").value = ""; // clear password on fail
         } else if (data.type === "judge") {
-          // users table only has username
-          localStorage.setItem("judge_id", data.user.username);
+          // Try common column names for judge identifiers
+          const user = data.user;
+          const judgeId = user.judge_id || user.usernames || user.judge_code || user.id || user.username;
+          localStorage.setItem("judge_id", judgeId);
           window.location.href = "dashboard.html";
         } else if (data.type === "student" || data.type === "team") {
           const user = data.user;

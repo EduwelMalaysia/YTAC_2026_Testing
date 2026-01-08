@@ -138,7 +138,7 @@ var worker_default = {
 
 				// 1️⃣ Try to find a judge
 				const judgeResult = await db.prepare(`
-          SELECT username
+          SELECT *
           FROM users
           WHERE username = ? AND password = ?
         `).bind(username, password).first();
@@ -147,9 +147,7 @@ var worker_default = {
 					return cors(new Response(JSON.stringify({
 						success: true,
 						type: "judge",
-						user: {
-							username: judgeResult.username
-						}
+						user: judgeResult
 					}), { headers: { "Content-Type": "application/json" } }));
 				}
 

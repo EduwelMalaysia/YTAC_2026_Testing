@@ -2297,10 +2297,11 @@
 
       const headers = [
         "Team Code",
+        "Password",
         "Team Name",
         "Category",
         "School",
-        "Members",
+        "Student Names",
         "Assigned Judge",
         "Status",
         "Created At"
@@ -2309,10 +2310,11 @@
       const rows = allTeams.map(team => {
         return [
           `"${(team.team_code || '').replace(/"/g, '""')}"`,
+          `"${(team.password || '').replace(/"/g, '""')}"`,
           `"${(team.team_name || '').replace(/"/g, '""')}"`,
           `"${(team.category || '').replace(/"/g, '""')}"`,
           `"${(team.school || '').replace(/"/g, '""')}"`,
-          `"${(team.members || '').replace(/"/g, '""')}"`,
+          `"${(team.student_names || team.members || '').replace(/"/g, '""')}"`,
           `"${(team.assigned_judge || '').replace(/"/g, '""')}"`,
           `"${(team.status || '').replace(/"/g, '""')}"`,
           `"${(team.created_at || '').replace(/"/g, '""')}"`
@@ -2649,51 +2651,7 @@
 
     // Uncomment this for debug.
     // Logic for ADDING A TEAM (formerly ns_submit)
-    document.getElementById('nt_submit')?.addEventListener('click', async () => {
-      const catEl = document.getElementById('teamCategoryFilterAdd');
-      const nameEl = document.getElementById('nt_team_name');
-      const membersEl = document.getElementById('nt_members');
-      const statusEl = document.getElementById('newTeamStatus');
 
-      const category = catEl.value.trim();
-      const team_name = nameEl.value.trim();
-      const members = membersEl.value.trim();
-
-      // Check if all fields are filled
-      if (!category || !team_name || !members) {
-        statusEl.textContent = 'Please fill all fields.';
-        return;
-      }
-
-      const btn = document.getElementById('nt_submit');
-      btn.disabled = true;
-      statusEl.textContent = 'Saving…';
-
-      try {
-        const response = await fetch(`${API}/teams`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ category, team_name, members })
-        });
-
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`Server responded with ${response.status}: ${text}`);
-        }
-
-        statusEl.textContent = 'Team saved ✅';
-        nameEl.value = '';
-        membersEl.value = '';
-        loadStudents(); // Refresh team list
-      } catch (e) {
-        console.error('Network error:', e);
-        statusEl.textContent = `Network error: ${e.message || 'Unknown error'}`;
-      } finally {
-        btn.disabled = false;
-      }
-    });
 
     async function loadStudents() {
       const statusEl = document.getElementById('studentListStatus');

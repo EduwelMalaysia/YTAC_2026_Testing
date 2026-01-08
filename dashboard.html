@@ -104,6 +104,10 @@
           Timer</button>
       </div>
 
+      <div id="debugInfo" style="font-size: 11px; color: #888; margin-top: -10px; margin-bottom: 20px;">
+        Evaluation ID: <span id="currentJudgeIdDisp">...</span>
+      </div>
+
       <label>Select Team (Sequential Order):</label>
       <select id="teamSelect">
         <option value="">-- Loading Assignments --</option>
@@ -203,6 +207,7 @@
         try {
           // 1. Load Assigned Teams AND My Scores (Parallel)
           const effectiveJudgeId = judge_id.toUpperCase();
+          document.getElementById("currentJudgeIdDisp").textContent = judge_id + (judge_id !== effectiveJudgeId ? " (Searching as " + effectiveJudgeId + ")" : "");
 
           const [teamsRes, scoresRes] = await Promise.all([
             fetch(`${API}/assigned-teams?judge_id=${effectiveJudgeId}`),
